@@ -1,0 +1,17 @@
+{% extends 'base.html' %}
+{% block title %}Error{% endblock %}
+{% block content %}
+<div class="d-flex flex-column align-items-center justify-content-center text-center" style="min-height:50vh;max-width:460px;margin:0 auto;">
+  <div style="width:60px;height:60px;background:var(--danger-pale);border-radius:14px;display:flex;align-items:center;justify-content:center;margin-bottom:20px;">
+    <i class="ph ph-warning-circle" style="font-size:28px;color:var(--danger);"></i>
+  </div>
+  <h4 class="fw-bold mb-2" style="color:var(--text);">Something went wrong</h4>
+  <p style="color:var(--text-muted);font-size:0.88rem;margin-bottom:24px;">{{ error_message }}</p>
+  <div class="d-flex gap-2">
+    <a href="{{ url_for('index') }}" class="btn btn-primary px-4">
+      <i class="ph ph-arrow-left me-1"></i> Back to Dashboard
+    </a>
+    <a href="javascript:history.back()" class="btn btn-outline-secondary px-4">Try Again</a>
+  </div>
+</div>
+{% endblock %}

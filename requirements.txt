@@ -1,0 +1,10 @@
+Flask
+python-dotenv
+supabase
+docxtpl
+Pillow
+Werkzeug
+gunicorn
+requests
+flask-socketio
+eventlet

@@ -1,0 +1,519 @@
+{% extends 'base.html' %}
+{% block title %}Sign In — SolarDoc{% endblock %}
+{% block content %}
+<style>
+  /* ── Login grid ─────────────────────────────────────────────── */
+  .login-wrap {
+    min-height: calc(100vh - var(--nav-h) - 80px);
+    display: grid;
+    grid-template-columns: 1fr 420px;
+    gap: 60px;
+    align-items: center;
+  }
+  .landing-head { font-size:2.4rem;font-weight:700;line-height:1.15;color:var(--text);letter-spacing:-0.5px; }
+  .landing-head span { color:var(--accent); }
+  .landing-sub { color:var(--text-muted);font-size:0.95rem;margin-top:12px;line-height:1.65; }
+  .feature-row { display:flex;align-items:flex-start;gap:14px;padding:14px 0;border-top:1px solid var(--border); }
+  .feat-icon { width:36px;height:36px;background:var(--accent-pale);border-radius:9px;display:flex;align-items:center;justify-content:center;color:var(--accent);flex-shrink:0; }
+  .feat-icon i { font-size:17px; }
+  .feat-title { font-weight:600;font-size:0.88rem;color:var(--text); }
+  .feat-desc  { font-size:0.78rem;color:var(--text-muted);margin-top:2px;line-height:1.5; }
+  .trust-bar  { display:flex;align-items:center;gap:10px;padding:12px 16px;background:var(--bg-subtle);border-radius:var(--radius);border:1px solid var(--border);margin-top:20px; }
+  .trust-bar i { color:var(--accent);font-size:17px; }
+  .login-card { background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-lg);padding:36px 38px;box-shadow:var(--shadow); }
+  .pw-wrap { position:relative; }
+  .pw-eye { position:absolute;right:11px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--text-muted);padding:0; }
+  .pw-eye:hover { color:var(--accent); }
+  .pw-eye i { font-size:16px; }
+  .input-icon-wrap { position:relative; }
+  .input-icon-wrap i.field-ico { position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--text-light);font-size:15px;pointer-events:none; }
+  .input-icon-wrap input { padding-left:33px; }
+
+  /* ── Carousel ───────────────────────────────────────────────── */
+  .carousel-band {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    margin-top: 40px;
+  }
+  .carousel-hd { padding:13px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px; }
+  .carousel-track-wrap { overflow:hidden;position:relative;padding:16px 0; }
+  .carousel-track { display:flex;gap:16px;padding:0 20px;animation:scrollL 30s linear infinite;width:max-content; }
+  .carousel-track:hover { animation-play-state:paused; }
+  @keyframes scrollL { 0%{transform:translateX(0)} 100%{transform:translateX(-50%)} }
+  .c-item { display:flex;flex-direction:column;align-items:center;gap:6px;width:84px;flex-shrink:0; }
+  .c-logo { width:58px;height:58px;border-radius:12px;object-fit:contain;border:1px solid var(--border);background:var(--bg-subtle);padding:4px;box-shadow:var(--shadow-sm);transition:transform 0.18s; }
+  .c-item:hover .c-logo { transform:scale(1.1); }
+  .c-name { font-size:0.67rem;font-weight:600;color:var(--text-muted);text-align:center;line-height:1.3;max-width:78px;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical; }
+  .carousel-track-wrap::before,.carousel-track-wrap::after { content:'';position:absolute;top:0;bottom:0;width:44px;z-index:2;pointer-events:none; }
+  .carousel-track-wrap::before { left:0;background:linear-gradient(to right,var(--bg-card),transparent); }
+  .carousel-track-wrap::after  { right:0;background:linear-gradient(to left,var(--bg-card),transparent); }
+
+  /* ── Document preview section ───────────────────────────────── */
+  .doc-preview-section { margin-top:40px; }
+  .doc-preview-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 16px;
+  }
+  .doc-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    position: relative;
+    box-shadow: var(--shadow-sm);
+    transition: box-shadow 0.15s, border-color 0.15s;
+  }
+  .doc-card:hover { box-shadow:var(--shadow); border-color:var(--accent); }
+  .doc-card-head {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: var(--bg-subtle);
+  }
+  .doc-card-num {
+    width:22px;height:22px;border-radius:6px;background:var(--accent);color:var(--accent-text);
+    font-size:0.68rem;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;
+  }
+  .doc-card-title { font-weight:700;font-size:0.84rem;color:var(--text); }
+  .doc-card-body {
+    padding: 14px 16px;
+    user-select: none;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    pointer-events: none;
+  }
+  .doc-field-row { display:flex;flex-direction:column;gap:3px;margin-bottom:10px; }
+  .doc-field-row:last-child { margin-bottom:0; }
+  .doc-field-label { font-size:0.65rem;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-muted); }
+  .doc-field-value {
+    font-size:0.8rem;font-weight:600;color:var(--text);
+    background:var(--bg-subtle);border:1px solid var(--border);border-radius:5px;
+    padding:5px 9px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  }
+  .doc-field-value.ph { color:var(--text-light);font-weight:400;font-style:italic; }
+
+  /* Transparent blocking overlay — sits on top, no pointer through */
+  .protect-overlay {
+    position:absolute;inset:0;z-index:10;cursor:not-allowed;
+    -webkit-user-select:none;user-select:none;
+  }
+
+  /* Diagonal watermark via pseudo-element */
+  .doc-card::after {
+    content:'SolarDoc  Preview Only  •  SolarDoc  Preview Only  •  SolarDoc  Preview Only';
+    position:absolute;inset:0;
+    display:flex;align-items:center;justify-content:center;
+    font-size:0.62rem;font-weight:800;letter-spacing:2px;
+    color:var(--accent);opacity:0.06;
+    transform:rotate(-28deg);pointer-events:none;z-index:5;
+    white-space:nowrap;overflow:hidden;text-transform:uppercase;
+  }
+
+  /* Fade-out bottom of each card */
+  .doc-card-fade {
+    position:absolute;bottom:0;left:0;right:0;height:56px;
+    background:linear-gradient(to bottom,transparent,var(--bg-card));
+    z-index:6;pointer-events:none;
+    border-radius:0 0 var(--radius-lg) var(--radius-lg);
+  }
+
+  /* Hide entirely when printing */
+  @media print {
+    .doc-preview-section, .carousel-band { display:none !important; }
+  }
+
+  @media (max-width:860px) {
+    .login-wrap { grid-template-columns:1fr;max-width:440px;margin:0 auto; }
+    .landing-col { display:none; }
+    .doc-preview-grid { grid-template-columns:1fr 1fr; }
+  }
+  @media (max-width:540px) {
+    .doc-preview-grid { grid-template-columns:1fr; }
+  }
+</style>
+
+<!-- ── Login grid ──────────────────────────────────────────────────── -->
+<div class="login-wrap">
+
+  <div class="landing-col">
+    <div class="landing-head">Solar Documentation,<br><span>Automated.</span></div>
+    <p class="landing-sub">
+      SolarDoc generates complete, regulation-compliant document packages for solar rooftop installations — Commissioning Reports, Net Metering Applications, Model Agreements and more — in seconds.
+    </p>
+    <div class="mt-4">
+      <div class="feature-row">
+        <div class="feat-icon"><i class="ph ph-files"></i></div>
+        <div>
+          <div class="feat-title">5 Documents, One Submission</div>
+          <div class="feat-desc">Commissioning Report, Net Metering Application, Model Agreement, Meter Testing &amp; Work Completion — all as a single ZIP.</div>
+        </div>
+      </div>
+      <div class="feature-row">
+        <div class="feat-icon"><i class="ph ph-lightning"></i></div>
+        <div>
+          <div class="feat-title">Parallel Generation Engine</div>
+          <div class="feat-desc">All templates filled and converted to PDF simultaneously. No queues, no waiting.</div>
+        </div>
+      </div>
+      <div class="feature-row">
+        <div class="feat-icon"><i class="ph ph-stamp"></i></div>
+        <div>
+          <div class="feat-title">Agency Branding Embedded</div>
+          <div class="feat-desc">Logo, stamp, director name and address auto-populate across every document.</div>
+        </div>
+      </div>
+      <div class="feature-row">
+        <div class="feat-icon"><i class="ph ph-clock-clockwise"></i></div>
+        <div>
+          <div class="feat-title">Full Audit History</div>
+          <div class="feat-desc">Every generation logged with consumer details, dates and capacities.</div>
+        </div>
+      </div>
+    </div>
+    <div class="trust-bar">
+      <i class="ph ph-shield-check"></i>
+      <div>
+        <div style="font-weight:600;font-size:0.82rem;color:var(--text);">Aligned with MNRE &amp; MSEDCL guidelines</div>
+        <div style="font-size:0.76rem;color:var(--text-muted);">Documents formatted for Maharashtra net metering compliance</div>
+      </div>
+    </div>
+  </div>
+
+  <div>
+    <div class="login-card">
+      <div style="margin-bottom:28px;">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+          <div style="width:34px;height:34px;background:var(--accent);border-radius:9px;display:flex;align-items:center;justify-content:center;">
+            <i class="ph-bold ph-sun" style="color:#fff;font-size:17px;"></i>
+          </div>
+          <span style="font-weight:700;font-size:1.05rem;color:var(--text);">SolarDoc Portal</span>
+        </div>
+        <p style="color:var(--text-muted);font-size:0.83rem;margin:0;">Sign in with your agency credentials to continue.</p>
+      </div>
+
+      <form method="POST" autocomplete="on">
+        <div class="mb-3">
+          <label class="form-label">Username or Email</label>
+          <div class="input-icon-wrap">
+            <i class="ph ph-user field-ico"></i>
+            <input type="text" name="login_id" class="form-control"
+                   placeholder="e.g. sunpower_nagpur" autocomplete="username" required autofocus>
+          </div>
+        </div>
+        <div class="mb-4">
+          <label class="form-label">Password</label>
+          <div class="pw-wrap input-icon-wrap">
+            <i class="ph ph-lock field-ico"></i>
+            <input type="password" name="password" id="pwInput" class="form-control"
+                   style="padding-right:38px;" placeholder="••••••••"
+                   autocomplete="current-password" required>
+            <button type="button" class="pw-eye" onclick="togglePw()" tabindex="-1">
+              <i class="ph ph-eye" id="pwIco"></i>
+            </button>
+          </div>
+        </div>
+        <button type="submit" class="btn btn-primary w-100 py-2" style="font-size:0.9rem;">
+          Sign In <i class="ph ph-arrow-right ms-1"></i>
+        </button>
+      </form>
+
+      <div style="margin-top:22px;padding-top:18px;border-top:1px solid var(--border);">
+        {% if contact_info and (contact_info.admin_phone or contact_info.admin_whatsapp or contact_info.admin_email) %}
+          <p style="font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-muted);margin:0 0 10px;text-align:center;">
+            <i class="ph ph-headset" style="font-size:12px;"></i> Contact Administrator
+          </p>
+          <div style="display:flex;flex-direction:column;gap:7px;">
+            {% if contact_info.admin_phone %}
+            <a href="tel:{{ contact_info.admin_phone }}"
+               style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--bg-subtle);border:1px solid var(--border);border-radius:var(--radius);text-decoration:none;color:var(--text);font-size:0.82rem;font-weight:500;">
+              <i class="ph ph-phone" style="color:var(--accent);font-size:15px;flex-shrink:0;"></i>
+              <span>{{ contact_info.admin_phone }}</span>
+            </a>
+            {% endif %}
+            {% if contact_info.admin_whatsapp %}
+            <a href="https://wa.me/91{{ contact_info.admin_whatsapp | replace(' ','') | replace('-','') }}"
+               target="_blank" rel="noopener"
+               style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#F1F8F1;border:1px solid #C8E6C9;border-radius:var(--radius);text-decoration:none;color:#2E7D32;font-size:0.82rem;font-weight:500;">
+              <i class="ph ph-chats" style="font-size:15px;flex-shrink:0;"></i>
+              <span>WhatsApp — {{ contact_info.admin_whatsapp }}</span>
+            </a>
+            {% endif %}
+            {% if contact_info.admin_email %}
+            <a href="mailto:{{ contact_info.admin_email }}"
+               style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--bg-subtle);border:1px solid var(--border);border-radius:var(--radius);text-decoration:none;color:var(--text);font-size:0.82rem;font-weight:500;">
+              <i class="ph ph-envelope" style="color:var(--accent);font-size:15px;flex-shrink:0;"></i>
+              <span>{{ contact_info.admin_email }}</span>
+            </a>
+            {% endif %}
+          </div>
+        {% else %}
+          <div style="text-align:center;">
+            <span style="font-size:0.77rem;color:var(--text-muted);">
+              <i class="ph ph-lock-key" style="font-size:12px;"></i>
+              Access issues? Contact your administrator.
+            </span>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ── Partner agencies carousel ──────────────────────────────────── -->
+{% if carousel_agencies %}
+<div class="carousel-band">
+  <div class="carousel-hd">
+    <i class="ph ph-users-three" style="color:var(--accent);font-size:17px;"></i>
+    <div>
+      <span style="font-weight:700;font-size:0.88rem;">Trusted by Solar Agencies Across Maharashtra</span>
+      <span style="font-size:0.73rem;color:var(--text-muted);margin-left:8px;">
+        {{ carousel_agencies | length }} active partner{{ 's' if carousel_agencies|length != 1 }}
+      </span>
+    </div>
+  </div>
+  <div class="carousel-track-wrap">
+    <div class="carousel-track" id="carouselTrack">
+      {% for a in carousel_agencies + carousel_agencies %}
+      <div class="c-item" title="{{ a.agency_name }}">
+        <img src="{{ a.logo_url }}" class="c-logo" alt="{{ a.agency_name }}"
+             onerror="this.closest('.c-item').style.display='none'">
+        <div class="c-name">{{ a.agency_name }}</div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+{% endif %}
+
+
+<!-- ── Protected document template previews ──────────────────────── -->
+<div class="doc-preview-section" id="docPreviewSection">
+
+  <!-- Section header -->
+  <div style="display:flex;align-items:flex-end;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:20px;">
+    <div>
+      <h5 style="font-weight:700;margin:0;color:var(--text);">Document Templates Included</h5>
+      <p style="color:var(--text-muted);font-size:0.82rem;margin:4px 0 0;">
+        Every job auto-fills all 5 documents with consumer &amp; agency data.
+        <strong style="color:var(--accent);">Sign in to generate.</strong>
+      </p>
+    </div>
+    <div style="display:flex;align-items:center;gap:6px;background:var(--danger-pale);border:1px solid var(--danger);border-radius:var(--radius);padding:6px 12px;flex-shrink:0;">
+      <i class="ph ph-lock" style="color:var(--danger);font-size:14px;"></i>
+      <span style="font-size:0.72rem;font-weight:700;color:var(--danger);white-space:nowrap;">Preview only — no download, copy or save</span>
+    </div>
+  </div>
+
+  <div class="doc-preview-grid">
+
+    <!-- 1 Commissioning Report -->
+    <div class="doc-card">
+      <div class="protect-overlay"></div>
+      <div class="doc-card-head">
+        <div class="doc-card-num">1</div>
+        <div>
+          <div class="doc-card-title">Commissioning Report</div>
+          <div style="font-size:0.7rem;color:var(--text-muted);">System installation confirmation</div>
+        </div>
+        <i class="ph ph-file-text" style="color:var(--accent);font-size:18px;margin-left:auto;opacity:0.55;flex-shrink:0;"></i>
+      </div>
+      <div class="doc-card-body">
+        <div class="doc-field-row"><div class="doc-field-label">Consumer Name</div><div class="doc-field-value ph">Ramesh Dattatray Patil</div></div>
+        <div class="doc-field-row"><div class="doc-field-label">Installation Address</div><div class="doc-field-value ph">Plot 42, Wardha Road, Nagpur – 440015</div></div>
+        <div class="doc-field-row"><div class="doc-field-label">System Capacity</div><div class="doc-field-value ph">5.00 KW</div></div>
+        <div class="doc-field-row"><div class="doc-field-label">Commissioning Date</div><div class="doc-field-value ph">12-03-2025</div></div>
+        <div class="doc-field-row"><div class="doc-field-label">Module Make &amp; ALMM No.</div><div class="doc-field-value ph">Waaree WS-540  /  ALMM/LM/01/…</div></div>
+        <div class="doc-field-row"><div class="doc-field-label">Agency Logo &amp; Stamp</div><div class="doc-field-value ph">[Embedded from agency profile]</div></div>
+      </div>
+      <div class="doc-card-fade"></div>
+    </div>
+
+    <!-- 2 Meter Testing -->
+    <div class="doc-card">
+      <div class="protect-overlay"></div>
+      <div class="doc-card-head">
+        <div class="doc-card-num">2</div>
+        <div>
+          <div class="doc-card-title">Meter Testing Certificate</div>
+          <div style="font-size:0.7rem;color:var(--text-muted);">Net meter testing record</div>
+        </div>
+        <i class="ph ph-gauge" style="color:var(--accent);font-size:18px;margin-left:auto;opacity:0.55;flex-shrink:0;"></i>
+      </div>
+      <div class="doc-card-body">
+        <div class="doc-field-row"><div class="doc-field-label">Consumer Number</div><div class="doc-field-value ph">401234567890</div></div>
+        <div class="doc-field-row"><div class="doc-field-label">DISCOM Division</div><div class="doc-field-value ph">MSEDCL Nagpur Urban</div></div>
+        <div class="doc-field-row"><div class="doc-field-label">Meter Testing Date</div><div class="doc-field-value ph">10-03-2025</div></div>
+        <div class="doc-field-row"><div class="doc-field-label">Sanction Number</div><div class="doc-field-value ph">MSEDCL/NUR/2024/RTPV/…</div></div>
+        <div class="doc-field-row"><div class="doc-field-label">Inverter Make &amp; Rating</div><div class="doc-field-value ph">Sungrow SG5KTL-MT  /  5 KVA</div></div>
+        <div class="doc-field-row"><div class="doc-field-label">Director Signature &amp; Stamp</div><div class="doc-field-value ph">[Embedded from agency profile]</div></div>
+      </div>
+      <div class="doc-card-fade"></div>
+    </div>
+
+    <!-- 3 Model Agreement -->
+    <div class="doc-card">
+      <div class="protect-overlay"></div>
+      <div class="doc-card-head">
+        <div class="doc-card-num">3</div>
+        <div>
+          <div class="doc-card-title">Model Agreement</div>
+          <div style="font-size:0.7rem;color:var(--text-muted);">Consumer–agency solar contract</div>
+        </div>
+        <i class="ph ph-handshake" style="color:var(--accent);font-size:18px;margin-left:auto;opacity:0.55;flex-shrink:0;"></i>
+      </div>
+      <div class="doc-card-body">
+        <div class="doc-field-row"><div class="doc-field-label">Agreement Date</div><div class="doc-field-value ph">01-03-2025</div></div>
+        <div class="doc-field-row"><div class="doc-field-label">Solar Price (Rs./KWh)</div><div class="doc-field-value ph">3.50</div></div>
+        <div class="doc-field-row"><div class="doc-field-label">Sanctioned Capacity</div><div class="doc-field-value ph">5.00 KW</div></div>
+        <div class="doc-field-row"><div class="doc-field-label">Consumer Aadhar Card</div><div class="doc-field-value ph">[Aadhar image embedded]</div></div>
+        <div class="doc-field-row"><div class="doc-field-label">Consumer Signature</div><div class="doc-field-value ph">[Signature image embedded]</div></div>
+        <div class="doc-field-row"><div class="doc-field-label">Agency Address</div><div class="doc-field-value ph">[From agency profile]</div></div>
+      </div>
+      <div class="doc-card-fade"></div>
+    </div>
+
+    <!-- 4 Net Metering -->
+    <div class="doc-card">
+      <div class="protect-overlay"></div>
+      <div class="doc-card-head">
+        <div class="doc-card-num">4</div>
+        <div>
+          <div class="doc-card-title">Net Metering Application</div>
+          <div style="font-size:0.7rem;color:var(--text-muted);">Grid connection application</div>
+        </div>
+        <i class="ph ph-lightning" style="color:var(--accent);font-size:18px;margin-left:auto;opacity:0.55;flex-shrink:0;"></i>
+      </div>
+      <div class="doc-card-body">
+        <div class="doc-field-row"><div class="doc-field-label">Licensee Name</div><div class="doc-field-value ph">Maharashtra State Electricity Dist. Co.</div></div>
+        <div class="doc-field-row"><div class="doc-field-label">Annexure Agreement Date</div><div class="doc-field-value ph">05-03-2025</div></div>
+        <div class="doc-field-row"><div class="doc-field-label">Total Module Capacity</div><div class="doc-field-value ph">5.40 KWp  (10 × 540 Wp)</div></div>
+        <div class="doc-field-row"><div class="doc-field-label">Module Efficiency</div><div class="doc-field-value ph">20.5 %</div></div>
+        <div class="doc-field-row"><div class="doc-field-label">Consumer Email</div><div class="doc-field-value ph">consumer@email.com</div></div>
+        <div class="doc-field-row"><div class="doc-field-label">Date (auto-filled)</div><div class="doc-field-value ph">[Today's date inserted automatically]</div></div>
+      </div>
+      <div class="doc-card-fade"></div>
+    </div>
+
+    <!-- 5 Work Completion -->
+    <div class="doc-card">
+      <div class="protect-overlay"></div>
+      <div class="doc-card-head">
+        <div class="doc-card-num">5</div>
+        <div>
+          <div class="doc-card-title">Work Completion Certificate</div>
+          <div style="font-size:0.7rem;color:var(--text-muted);">Project completion record</div>
+        </div>
+        <i class="ph ph-check-square" style="color:var(--accent);font-size:18px;margin-left:auto;opacity:0.55;flex-shrink:0;"></i>
+      </div>
+      <div class="doc-card-body">
+        <div class="doc-field-row"><div class="doc-field-label">Installation Date</div><div class="doc-field-value ph">08-03-2025</div></div>
+        <div class="doc-field-row"><div class="doc-field-label">Director Name</div><div class="doc-field-value ph">[From agency profile]</div></div>
+        <div class="doc-field-row"><div class="doc-field-label">Agency Contact</div><div class="doc-field-value ph">[From agency profile]</div></div>
+        <div class="doc-field-row"><div class="doc-field-label">Consumer Aadhar No.</div><div class="doc-field-value ph">XXXX  XXXX  XXXX</div></div>
+        <div class="doc-field-row"><div class="doc-field-label">Agency Logo</div><div class="doc-field-value ph">[Embedded]</div></div>
+        <div class="doc-field-row"><div class="doc-field-label">Agency Stamp / Seal</div><div class="doc-field-value ph">[Embedded]</div></div>
+      </div>
+      <div class="doc-card-fade"></div>
+    </div>
+
+    <!-- CTA card (6th slot) -->
+    <div style="background:var(--accent);border-radius:var(--radius-lg);padding:28px 24px;display:flex;flex-direction:column;justify-content:space-between;min-height:240px;">
+      <div>
+        <i class="ph ph-rocket-launch" style="font-size:32px;color:rgba(255,255,255,0.9);display:block;margin-bottom:14px;"></i>
+        <div style="font-weight:700;font-size:1.05rem;color:#fff;margin-bottom:8px;">Ready to generate?</div>
+        <p style="font-size:0.82rem;color:rgba(255,255,255,0.8);line-height:1.6;margin:0;">
+          Contact your administrator to get agency credentials and start generating all 5 documents instantly.
+        </p>
+      </div>
+      {% if contact_info and contact_info.admin_whatsapp %}
+      <a href="https://wa.me/91{{ contact_info.admin_whatsapp | replace(' ','') | replace('-','') }}"
+         target="_blank" rel="noopener"
+         style="display:inline-flex;align-items:center;gap:8px;margin-top:20px;padding:10px 20px;background:rgba(255,255,255,0.18);border:1.5px solid rgba(255,255,255,0.35);border-radius:var(--radius);color:#fff;font-weight:600;font-size:0.84rem;text-decoration:none;">
+        <i class="ph ph-chats" style="font-size:16px;"></i> Request Access on WhatsApp
+      </a>
+      {% elif contact_info and contact_info.admin_phone %}
+      <a href="tel:{{ contact_info.admin_phone }}"
+         style="display:inline-flex;align-items:center;gap:8px;margin-top:20px;padding:10px 20px;background:rgba(255,255,255,0.18);border:1.5px solid rgba(255,255,255,0.35);border-radius:var(--radius);color:#fff;font-weight:600;font-size:0.84rem;text-decoration:none;">
+        <i class="ph ph-phone" style="font-size:16px;"></i> Call to Get Access
+      </a>
+      {% else %}
+      <div style="margin-top:20px;padding:10px 16px;background:rgba(255,255,255,0.12);border-radius:var(--radius);font-size:0.8rem;color:rgba(255,255,255,0.75);">
+        <i class="ph ph-lock" style="font-size:13px;"></i> Sign in above with your credentials
+      </div>
+      {% endif %}
+    </div>
+
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// ── Password toggle ──
+function togglePw(){
+  const i=document.getElementById('pwInput'), ic=document.getElementById('pwIco');
+  if(i.type==='password'){i.type='text';ic.className='ph ph-eye-slash';}
+  else{i.type='password';ic.className='ph ph-eye';}
+}
+
+// ── Carousel speed ──
+(function(){
+  const track=document.getElementById('carouselTrack');
+  if(!track) return;
+  const count=track.querySelectorAll('.c-item').length/2;
+  if(count<=1){track.style.animation='none';return;}
+  if(count<5) track.style.animationDuration=(count*7)+'s';
+})();
+
+// ── Document preview protections ──
+(function(){
+  const section=document.getElementById('docPreviewSection');
+  if(!section) return;
+
+  // Block right-click on preview section
+  section.addEventListener('contextmenu',function(e){e.preventDefault();return false;});
+
+  // Block keyboard shortcuts
+  document.addEventListener('keydown',function(e){
+    const ctrl=e.ctrlKey||e.metaKey;
+    // Ctrl+P (print) — block globally
+    if(ctrl && e.key.toLowerCase()==='p'){e.preventDefault();return false;}
+    // Ctrl+S / Ctrl+C / Ctrl+A — block only when inside preview
+    if(ctrl && ['s','c','a'].includes(e.key.toLowerCase())){
+      if(section.matches(':hover')){e.preventDefault();return false;}
+    }
+    // PrintScreen — show warning flash
+    if(e.key==='PrintScreen'){
+      e.preventDefault();
+      const w=document.createElement('div');
+      w.textContent='Screenshots are not permitted on preview content.';
+      w.style.cssText='position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:#B03030;color:#fff;padding:16px 28px;border-radius:10px;font-weight:700;font-size:0.9rem;z-index:9999;box-shadow:0 8px 32px rgba(0,0,0,0.3);pointer-events:none;';
+      document.body.appendChild(w);
+      setTimeout(function(){w.remove();},2200);
+      return false;
+    }
+  });
+
+  // Block drag on preview
+  section.addEventListener('dragstart',function(e){e.preventDefault();return false;});
+
+  // Blur cards while tab is hidden (screen-capture detection)
+  document.addEventListener('visibilitychange',function(){
+    const cards=section.querySelectorAll('.doc-card-body');
+    if(document.hidden){
+      cards.forEach(function(c){c.style.filter='blur(10px)';});
+    } else {
+      setTimeout(function(){
+        cards.forEach(function(c){c.style.filter='';});
+      },700);
+    }
+  });
+})();
+</script>
+{% endblock %}

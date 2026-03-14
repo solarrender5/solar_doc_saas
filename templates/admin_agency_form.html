@@ -1,0 +1,296 @@
+{% extends 'base.html' %}
+{% block title %}{{ 'Edit Agency' if edit else 'New Agency' }}{% endblock %}
+{% block content %}
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css">
+<style>
+  .form-section { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 26px 28px; margin-bottom: 18px; }
+  .section-hd { display: flex; align-items: center; gap: 10px; margin-bottom: 20px; padding-bottom: 14px; border-bottom: 1px solid var(--border); }
+  .section-hd-ico { width: 34px; height: 34px; background: var(--accent-pale); border-radius: 8px; display: flex; align-items: center; justify-content: center; color: var(--accent); flex-shrink: 0; }
+  .section-hd-ico i { font-size: 16px; }
+  .section-hd-title { font-weight: 700; font-size: 0.92rem; color: var(--text); }
+  .section-hd-sub   { font-size: 0.77rem; color: var(--text-muted); margin-top: 1px; }
+  .upload-zone {
+    border: 2px dashed var(--border);
+    border-radius: var(--radius);
+    padding: 18px;
+    background: var(--bg-subtle);
+    transition: border-color 0.15s;
+  }
+  .upload-zone:hover { border-color: var(--accent); }
+  .preview-img {
+    width: 100%; max-height: 100px; object-fit: contain;
+    border-radius: var(--radius); border: 1px solid var(--border);
+    background: var(--bg-card); padding: 4px; display: none; margin-top: 10px;
+  }
+  .ratio-pill {
+    display: inline-flex; align-items: center; gap: 4px;
+    background: var(--accent-pale); color: var(--accent);
+    font-size: 0.7rem; font-weight: 700;
+    padding: 2px 8px; border-radius: 10px;
+    letter-spacing: 0.3px;
+  }
+  .img-container { width: 100%; height: 460px; background: #111; display: flex; align-items: center; justify-content: center; }
+  #cropperImage { display: block; max-width: 100%; max-height: 100%; }
+  .existing-img { width: 80px; height: 80px; object-fit: contain; border-radius: var(--radius); border: 1px solid var(--border); background: var(--bg-subtle); padding: 4px; }
+  .pw-wrap { position: relative; }
+  .pw-eye { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; color: var(--text-muted); padding: 0; }
+  .pw-eye:hover { color: var(--accent); }
+</style>
+
+<!-- Header -->
+<div class="d-flex align-items-center justify-content-between mb-4">
+  <div>
+    <h4 class="fw-bold mb-0">{{ 'Edit Agency' if edit else 'Register New Agency' }}</h4>
+    <p style="color:var(--text-muted);font-size:0.78rem;margin:3px 0 0;">
+      {{ 'Update agency details, credentials and branding.' if edit else 'Fill all required fields to create a new agency account.' }}
+    </p>
+  </div>
+  <a href="{{ url_for('admin_dashboard') }}" class="btn btn-outline-secondary btn-sm px-3">
+    <i class="ph ph-arrow-left me-1"></i> Back
+  </a>
+</div>
+
+<form method="POST" enctype="multipart/form-data" id="agencyForm">
+
+  <!-- Section 1: Agency details -->
+  <div class="form-section">
+    <div class="section-hd">
+      <div class="section-hd-ico"><i class="ph ph-buildings"></i></div>
+      <div>
+        <div class="section-hd-title">Agency Information</div>
+        <div class="section-hd-sub">Official registered name and address</div>
+      </div>
+    </div>
+    <div class="row g-3">
+      <div class="col-md-6">
+        <label class="form-label">Agency Name <span class="required">*</span></label>
+        <input type="text" name="agency_name" class="form-control"
+               value="{{ agency.agency_name if agency else '' }}"
+               placeholder="e.g. SunPower Nagpur Pvt. Ltd." required>
+      </div>
+      <div class="col-md-6">
+        <label class="form-label">Director / Proprietor Name <span class="required">*</span></label>
+        <input type="text" name="director_name" class="form-control"
+               value="{{ agency.director_name if agency else '' }}"
+               placeholder="e.g. Ramesh Sharma" required>
+      </div>
+      <div class="col-md-6">
+        <label class="form-label">Contact Number <span class="required">*</span></label>
+        <input type="tel" name="contact_number" class="form-control"
+               value="{{ agency.contact_number if agency else '' }}"
+               placeholder="10-digit mobile" required>
+      </div>
+      <div class="col-md-6">
+        <label class="form-label">Email Address</label>
+        <input type="email" name="email" class="form-control"
+               value="{{ agency.email if agency else '' }}"
+               placeholder="agency@email.com">
+      </div>
+      <div class="col-12">
+        <label class="form-label">Agency Address <span class="required">*</span></label>
+        <textarea name="agency_address" class="form-control" rows="2" required
+                  placeholder="Full postal address of the agency">{{ agency.agency_address if agency else '' }}</textarea>
+      </div>
+    </div>
+  </div>
+
+  <!-- Section 2: Login credentials -->
+  <div class="form-section">
+    <div class="section-hd">
+      <div class="section-hd-ico"><i class="ph ph-key"></i></div>
+      <div>
+        <div class="section-hd-title">Login Credentials</div>
+        <div class="section-hd-sub">{{ 'Leave password blank to keep existing password.' if edit else 'Username and password for portal access.' }}</div>
+      </div>
+    </div>
+    <div class="row g-3">
+      <div class="col-md-6">
+        <label class="form-label">Username <span class="required">*</span></label>
+        <input type="text" name="username" class="form-control"
+               value="{{ agency.username if agency else '' }}"
+               placeholder="e.g. sunpower_nagpur" autocomplete="off" required>
+      </div>
+      <div class="col-md-6">
+        <label class="form-label">Password {% if not edit %}<span class="required">*</span>{% else %}<span style="font-weight:400;text-transform:none;letter-spacing:0;">(leave blank to keep)</span>{% endif %}</label>
+        <div class="pw-wrap">
+          <input type="password" name="password" id="pwIn" class="form-control"
+                 placeholder="{% if edit %}Enter new password to change{% else %}Set a secure password{% endif %}"
+                 autocomplete="new-password"
+                 {% if not edit %}required{% endif %}
+                 style="padding-right:38px;">
+          <button type="button" class="pw-eye" onclick="togglePw()">
+            <i class="ph ph-eye" id="pwIco" style="font-size:15px;"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Section 3: Subscription -->
+  <div class="form-section">
+    <div class="section-hd">
+      <div class="section-hd-ico"><i class="ph ph-calendar"></i></div>
+      <div>
+        <div class="section-hd-title">Subscription</div>
+        <div class="section-hd-sub">{{ 'Current expiry shown below. Set a new date to override.' if edit else 'Choose subscription duration.' }}</div>
+      </div>
+    </div>
+    <div class="row g-3 align-items-end">
+      {% if edit %}
+        <div class="col-md-4">
+          <label class="form-label">Current Expiry</label>
+          <input type="text" class="form-control" value="{{ agency.expires_at or 'Not set' }}" readonly style="background:var(--bg-subtle);color:var(--text-muted);">
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">New Expiry Date (override)</label>
+          <input type="date" name="expires_at" class="form-control" value="{{ agency.expires_at or '' }}">
+        </div>
+      {% else %}
+        <div class="col-md-4">
+          <label class="form-label">Subscription Duration <span class="required">*</span></label>
+          <select name="subscription_months" class="form-select">
+            <option value="1">1 Month</option>
+            <option value="3">3 Months</option>
+            <option value="6">6 Months</option>
+            <option value="12" selected>12 Months (1 Year)</option>
+            <option value="24">24 Months (2 Years)</option>
+          </select>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Section 4: Branding -->
+  <div class="form-section">
+    <div class="section-hd">
+      <div class="section-hd-ico"><i class="ph ph-image"></i></div>
+      <div>
+        <div class="section-hd-title">Agency Branding</div>
+        <div class="section-hd-sub">Logo and stamp are embedded into every generated document</div>
+      </div>
+    </div>
+
+    <input type="hidden" name="logo_base64"  id="logo_base64">
+    <input type="hidden" name="stamp_base64" id="stamp_base64">
+
+    <div class="row g-4">
+      <!-- Logo -->
+      <div class="col-md-6">
+        <div class="upload-zone">
+          <label class="form-label mb-1">Agency Logo
+            <span class="ratio-pill ms-1"><i class="ph ph-crop" style="font-size:10px;"></i> 1 : 1</span>
+          </label>
+          {% if edit and agency.logo_url %}
+            <div class="mb-2">
+              <img src="{{ agency.logo_url }}" class="existing-img" title="Current logo">
+              <div style="font-size:0.73rem;color:var(--text-muted);margin-top:4px;">Current logo — upload a new file to replace</div>
+            </div>
+          {% endif %}
+          <input type="file" class="form-control brand-input" data-target="logo" data-ratio="1" accept="image/png,image/jpeg">
+          <img id="logo-preview" class="preview-img" alt="Logo preview">
+          <div id="logo-status" style="font-size:0.73rem;color:var(--text-muted);margin-top:6px;">Square — 4.5 × 4.5 cm in document</div>
+        </div>
+      </div>
+
+      <!-- Stamp -->
+      <div class="col-md-6">
+        <div class="upload-zone">
+          <label class="form-label mb-1">Agency Stamp / Seal
+            <span class="ratio-pill ms-1"><i class="ph ph-crop" style="font-size:10px;"></i> 13 : 5</span>
+          </label>
+          {% if edit and agency.stamp_url %}
+            <div class="mb-2">
+              <img src="{{ agency.stamp_url }}" class="existing-img" title="Current stamp">
+              <div style="font-size:0.73rem;color:var(--text-muted);margin-top:4px;">Current stamp — upload a new file to replace</div>
+            </div>
+          {% endif %}
+          <input type="file" class="form-control brand-input" data-target="stamp" data-ratio="2.6" accept="image/png,image/jpeg">
+          <img id="stamp-preview" class="preview-img" alt="Stamp preview">
+          <div id="stamp-status" style="font-size:0.73rem;color:var(--text-muted);margin-top:6px;">Wide — 6.5 × 2.5 cm in document</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Submit -->
+  <div style="display:flex;gap:10px;justify-content:flex-end;">
+    <a href="{{ url_for('admin_dashboard') }}" class="btn btn-outline-secondary px-5">Cancel</a>
+    <button type="submit" class="btn btn-primary px-5">
+      <i class="ph ph-{{ 'floppy-disk' if edit else 'plus-circle' }} me-1"></i>
+      {{ 'Save Changes' if edit else 'Create Agency' }}
+    </button>
+  </div>
+</form>
+
+<!-- Cropper modal -->
+<div class="modal fade" id="cropModal" data-bs-backdrop="static">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content border-0" style="background:var(--bg-card);">
+      <div class="modal-header border-0" style="background:var(--accent);">
+        <h5 class="modal-title text-white">Crop Image</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body p-0">
+        <div class="img-container"><img id="cropImg" alt=""></div>
+      </div>
+      <div class="modal-footer border-0" style="background:var(--bg-subtle);">
+        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-primary px-5" id="cropBtn">
+          <i class="ph ph-check me-1"></i> Crop &amp; Save
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
+<script>
+let cropper = null, cropTarget = null, cropRatio = NaN;
+const cropImg   = document.getElementById('cropImg');
+const cropModalEl = document.getElementById('cropModal');
+const cropModal = new bootstrap.Modal(cropModalEl);
+
+document.querySelectorAll('.brand-input').forEach(function(el){
+  el.addEventListener('change', function(e){
+    const file = e.target.files && e.target.files[0];
+    if(!file) return;
+    if(file.size > 5 * 1024 * 1024){ alert('Max file size is 5 MB.'); e.target.value=''; return; }
+    cropTarget = e.target.dataset.target;
+    cropRatio  = parseFloat(e.target.dataset.ratio) || NaN;
+    const reader = new FileReader();
+    reader.onload = function(ev){ cropImg.src = ev.target.result; cropModal.show(); };
+    reader.readAsDataURL(file);
+  });
+});
+
+cropModalEl.addEventListener('shown.bs.modal', function(){
+  cropper = new Cropper(cropImg, {
+    aspectRatio: cropRatio,
+    viewMode: 1,
+    guides: true,
+    highlight: false,
+    autoCropArea: 0.95,
+  });
+});
+cropModalEl.addEventListener('hidden.bs.modal', function(){ if(cropper){ cropper.destroy(); cropper=null; } });
+
+document.getElementById('cropBtn').addEventListener('click', function(){
+  if(!cropper) return;
+  const b64 = cropper.getCroppedCanvas({ maxWidth: 1400 }).toDataURL('image/png');
+  document.getElementById(cropTarget + '_base64').value = b64;
+  const prev = document.getElementById(cropTarget + '-preview');
+  prev.src = b64; prev.style.display = 'block';
+  document.getElementById(cropTarget + '-status').innerHTML = '<i class="ph ph-check-circle" style="color:var(--accent);"></i> Image ready';
+  cropModal.hide();
+});
+
+function togglePw(){
+  const i = document.getElementById('pwIn');
+  const ic = document.getElementById('pwIco');
+  i.type = i.type === 'password' ? 'text' : 'password';
+  ic.className = i.type === 'password' ? 'ph ph-eye' : 'ph ph-eye-slash';
+}
+</script>
+{% endblock %}

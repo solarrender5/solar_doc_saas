@@ -1,0 +1,116 @@
+{% extends 'base.html' %}
+{% block title %}Record — {{ record.consumer_name }}{% endblock %}
+{% block content %}
+<style>
+  .detail-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-lg); margin-bottom: 16px; overflow: hidden; }
+  .detail-head { padding: 16px 22px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px; background: var(--bg-subtle); }
+  .detail-head i { color: var(--accent); font-size: 17px; }
+  .detail-head-title { font-weight: 700; font-size: 0.9rem; color: var(--text); }
+  .detail-body { padding: 18px 22px; }
+  .detail-row { display: grid; grid-template-columns: 190px 1fr; gap: 8px; padding: 8px 0; border-bottom: 1px solid var(--border); align-items: baseline; }
+  .detail-row:last-child { border-bottom: none; }
+  .detail-label { font-size: 0.75rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.4px; }
+  .detail-value { font-size: 0.88rem; color: var(--text); font-weight: 500; }
+  .detail-value.empty { color: var(--text-light); font-weight: 400; }
+</style>
+
+<div class="d-flex align-items-center justify-content-between mb-4">
+  <div>
+    <h4 class="fw-bold mb-0">Record Detail</h4>
+    <p style="color:var(--text-muted);font-size:0.78rem;margin:3px 0 0;">
+      Generated {{ record.created_at[:10] if record.created_at else '—' }}
+      {% if record.created_at and 'T' in record.created_at %}at {{ record.created_at[11:16] }}{% endif %}
+    </p>
+  </div>
+  <div class="d-flex gap-2">
+    <a href="{{ url_for('generate') }}" class="btn btn-primary btn-sm px-4">
+      <i class="ph ph-file-arrow-up me-1"></i> Regenerate
+    </a>
+    <form action="{{ url_for('history_delete', record_id=record.id) }}" method="POST" style="margin:0;">
+      <input type="hidden" name="_q" value="">
+      <input type="hidden" name="_page" value="1">
+      <button type="submit" class="btn btn-outline-danger btn-sm px-3"
+              onclick="return confirm('Delete this record? This cannot be undone.')">
+        <i class="ph ph-trash me-1"></i> Delete
+      </button>
+    </form>
+    <a href="{{ url_for('history') }}" class="btn btn-outline-secondary btn-sm px-3">
+      <i class="ph ph-arrow-left me-1"></i> Back
+    </a>
+  </div>
+</div>
+
+{% macro row(label, val) %}
+<div class="detail-row">
+  <div class="detail-label">{{ label }}</div>
+  <div class="detail-value {% if not val or val == 'None' %}empty{% endif %}">{{ val or '—' }}</div>
+</div>
+{% endmacro %}
+
+<!-- Consumer -->
+<div class="detail-card">
+  <div class="detail-head">
+    <i class="ph ph-user-circle"></i>
+    <span class="detail-head-title">Consumer Information</span>
+  </div>
+  <div class="detail-body">
+    {{ row('Consumer Name',    record.consumer_name) }}
+    {{ row('Consumer Number',  record.consumer_number) }}
+    {{ row('Site Address',     record.consumer_address) }}
+    {{ row('City / District',  record.city) }}
+    {{ row('Contact Number',   record.consumer_contact_number) }}
+    {{ row('Email',            record.consumer_email) }}
+    {{ row('Aadhar Number',    record.consumer_aadhar_num) }}
+  </div>
+</div>
+
+<!-- Grid & Sanction -->
+<div class="detail-card">
+  <div class="detail-head">
+    <i class="ph ph-lightning"></i>
+    <span class="detail-head-title">Grid &amp; Sanction Details</span>
+  </div>
+  <div class="detail-body">
+    {{ row('DISCOM Division',       record.discom_division) }}
+    {{ row('Licensee Name',         record.licensee_name) }}
+    {{ row('Sanction Number',       record.sanction_number) }}
+    {{ row('Sanctioned Capacity',   (record.sanction_capacity_kw|string + ' KW') if record.sanction_capacity_kw else None) }}
+    {{ row('Installed Capacity',    (record.system_capacity_kw|string + ' KW') if record.system_capacity_kw else None) }}
+    {{ row('Agreement Solar Price', (record.agreement_solar_price|string + ' ₹/KWh') if record.agreement_solar_price else None) }}
+  </div>
+</div>
+
+<!-- Technical -->
+<div class="detail-card">
+  <div class="detail-head">
+    <i class="ph ph-sun"></i>
+    <span class="detail-head-title">Technical Specifications</span>
+  </div>
+  <div class="detail-body">
+    {{ row('Module Make / Brand',   record.module_make) }}
+    {{ row('ALMM Model Number',     record.almm_model_number) }}
+    {{ row('Module Efficiency',     (record.module_efficiency|string + ' %') if record.module_efficiency else None) }}
+    {{ row('Wattage per Module',    (record.module_capacity_wp|string + ' Wp') if record.module_capacity_wp else None) }}
+    {{ row('Number of Modules',     record.num_pv_modules) }}
+    {{ row('Total Module Capacity', (record.total_module_capacity_kwp|string + ' KWp') if record.total_module_capacity_kwp else None) }}
+    {{ row('Inverter Make & Model', record.inverter_make_and_model) }}
+    {{ row('Inverter Capacity',     (record.inverter_capacity_kw|string + ' KW') if record.inverter_capacity_kw else None) }}
+    {{ row('Inverter Rating',       record.inverter_rating_text) }}
+  </div>
+</div>
+
+<!-- Dates -->
+<div class="detail-card">
+  <div class="detail-head">
+    <i class="ph ph-calendar-blank"></i>
+    <span class="detail-head-title">Important Dates</span>
+  </div>
+  <div class="detail-body">
+    {{ row('Agreement Date',          record.agreement_date) }}
+    {{ row('Annexure Agreement Date', record.annexure_agreement_date) }}
+    {{ row('Installation Date',       record.installation_date) }}
+    {{ row('Meter Testing Date',      record.meter_testing_date) }}
+    {{ row('Commissioning Date',      record.performance_check_date) }}
+  </div>
+</div>
+{% endblock %}

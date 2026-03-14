@@ -1,0 +1,357 @@
+{% extends 'base.html' %}
+{% block title %}Admin Panel{% endblock %}
+{% block content %}
+<style>
+  .stat-box {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 18px 22px;
+    display: flex; align-items: center; gap: 14px;
+  }
+  .stat-ico { width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 19px; flex-shrink: 0; }
+  .stat-val { font-size: 1.75rem; font-weight: 700; line-height: 1; color: var(--text); }
+  .stat-lbl { font-size: 0.72rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted); margin-top: 3px; }
+  .search-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .searchbox {
+    display: flex; align-items: center; gap: 8px;
+    background: var(--bg-card);
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius);
+    padding: 0 12px;
+    flex: 1; min-width: 220px; max-width: 420px;
+  }
+  .searchbox i { color: var(--text-light); font-size: 15px; flex-shrink: 0; }
+  .searchbox input { border: none; background: transparent; color: var(--text); font-size: 0.87rem; width: 100%; padding: 8px 0; outline: none; }
+  .searchbox input::placeholder { color: var(--text-light); }
+  .filter-tabs { display: flex; gap: 3px; }
+  .ftab {
+    padding: 6px 14px; border-radius: var(--radius); font-size: 0.78rem; font-weight: 600;
+    border: 1.5px solid var(--border); background: transparent; color: var(--text-muted);
+    cursor: pointer; text-decoration: none; transition: all 0.13s; white-space: nowrap;
+  }
+  .ftab:hover, .ftab.on { background: var(--accent-pale); color: var(--accent); border-color: var(--accent); }
+  .logo-thumb { width: 34px; height: 34px; border-radius: 7px; object-fit: contain; border: 1px solid var(--border); background: var(--bg-subtle); padding: 2px; flex-shrink: 0; }
+  .logo-ph { width: 34px; height: 34px; border-radius: 7px; background: var(--accent-pale); border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; color: var(--accent); flex-shrink: 0; }
+  .pw-reveal { cursor: pointer; font-size: 0.78rem; letter-spacing: 1.5px; color: var(--text-muted); user-select: none; }
+  .pw-reveal.shown { letter-spacing: normal; color: var(--text); }
+</style>
+
+<!-- Page header -->
+<div class="d-flex align-items-center justify-content-between mb-4">
+  <div>
+    <h4 class="fw-bold mb-0" style="color:var(--text);">Admin Panel</h4>
+    <p style="color:var(--text-muted);font-size:0.78rem;margin:3px 0 0;">Manage registered agencies, subscriptions and credentials</p>
+  </div>
+  <a href="{{ url_for('admin_create_agency') }}" class="btn btn-primary px-4">
+    <i class="ph ph-plus-circle me-1"></i> New Agency
+  </a>
+</div>
+
+<!-- Stats -->
+<div class="row g-3 mb-4">
+  <div class="col-sm-4">
+    <div class="stat-box">
+      <div class="stat-ico" style="background:var(--bg-subtle);color:var(--text-muted);"><i class="ph ph-buildings"></i></div>
+      <div><div class="stat-val">{{ stats.total }}</div><div class="stat-lbl">Total Agencies</div></div>
+    </div>
+  </div>
+  <div class="col-sm-4">
+    <div class="stat-box">
+      <div class="stat-ico" style="background:var(--accent-pale);color:var(--accent);"><i class="ph ph-check-circle"></i></div>
+      <div><div class="stat-val" style="color:var(--accent);">{{ stats.active }}</div><div class="stat-lbl">Active</div></div>
+    </div>
+  </div>
+  <div class="col-sm-4">
+    <div class="stat-box">
+      <div class="stat-ico" style="background:var(--danger-pale);color:var(--danger);"><i class="ph ph-x-circle"></i></div>
+      <div><div class="stat-val" style="color:var(--danger);">{{ stats.expired }}</div><div class="stat-lbl">Expired</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- Search + Filter -->
+<form method="GET" action="{{ url_for('admin_dashboard') }}" id="searchForm">
+  <input type="hidden" name="status" value="{{ status }}">
+  <div class="search-row mb-3">
+    <div class="searchbox">
+      <i class="ph ph-magnifying-glass"></i>
+      <input type="text" name="search" value="{{ search }}"
+             placeholder="Search by agency, director, contact, username …"
+             oninput="document.getElementById('searchForm').submit()"
+             autocomplete="off">
+      {% if search %}
+        <a href="{{ url_for('admin_dashboard', status=status) }}" style="color:var(--text-light);flex-shrink:0;">
+          <i class="ph ph-x" style="font-size:13px;"></i>
+        </a>
+      {% endif %}
+    </div>
+
+    <div class="filter-tabs">
+      <a href="{{ url_for('admin_dashboard', search=search, status='all') }}"
+         class="ftab {% if status=='all' %}on{% endif %}">All ({{ stats.total }})</a>
+      <a href="{{ url_for('admin_dashboard', search=search, status='active') }}"
+         class="ftab {% if status=='active' %}on{% endif %}">Active ({{ stats.active }})</a>
+      <a href="{{ url_for('admin_dashboard', search=search, status='expired') }}"
+         class="ftab {% if status=='expired' %}on{% endif %}">Expired ({{ stats.expired }})</a>
+    </div>
+
+    {% if search %}
+      <span style="font-size:0.78rem;color:var(--text-muted);">{{ total }} result{{ 's' if total != 1 }}</span>
+    {% endif %}
+  </div>
+</form>
+
+<!-- Table -->
+<div class="table-wrap">
+  <table class="table mb-0">
+    <thead>
+      <tr>
+        <th class="ps-4" style="width:28%;">Agency</th>
+        <th style="width:18%;">Director</th>
+        <th style="width:18%;">Subscription</th>
+        <th style="width:16%;">Login Credentials</th>
+        <th class="text-end pe-4" style="width:20%;">Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+    {% for a in agencies %}
+    <tr>
+      <td class="ps-4">
+        <div class="d-flex align-items-center gap-2">
+          {% if a.logo_url %}
+            <img src="{{ a.logo_url }}" class="logo-thumb">
+          {% else %}
+            <div class="logo-ph"><i class="ph ph-buildings" style="font-size:15px;"></i></div>
+          {% endif %}
+          <div style="min-width:0;">
+            <div style="font-weight:600;font-size:0.88rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ a.agency_name }}</div>
+            <div style="font-size:0.73rem;color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ a.email or '—' }}</div>
+            {% if a.days_left > 30 %}
+              <span class="chip chip-green mt-1">Active</span>
+            {% elif a.days_left > 0 %}
+              <span class="chip chip-amber mt-1">Expiring</span>
+            {% else %}
+              <span class="chip chip-red mt-1">Expired</span>
+            {% endif %}
+          </div>
+        </div>
+      </td>
+      <td>
+        <div style="font-weight:500;font-size:0.86rem;">{{ a.director_name or '—' }}</div>
+        <div style="font-size:0.77rem;color:var(--text-muted);">
+          <i class="ph ph-phone" style="font-size:11px;"></i> {{ a.contact_number or '—' }}
+        </div>
+      </td>
+      <td>
+        <div style="font-weight:500;font-size:0.84rem;">{{ a.expires_at or '—' }}</div>
+        {% if a.days_left > 30 %}
+          <div style="font-size:0.73rem;color:var(--accent);">{{ a.days_left }} days remaining</div>
+        {% elif a.days_left > 0 %}
+          <div style="font-size:0.73rem;color:var(--warn);font-weight:600;">{{ a.days_left }} days left</div>
+        {% else %}
+          <div style="font-size:0.73rem;color:var(--danger);font-weight:600;">Overdue</div>
+        {% endif %}
+      </td>
+      <td>
+        <div style="font-size:0.77rem;"><span style="color:var(--text-muted);">User: </span><code style="font-size:0.77rem;color:var(--text);background:transparent;">{{ a.username }}</code></div>
+        <div style="font-size:0.77rem;display:flex;align-items:center;gap:5px;">
+          <span style="color:var(--text-muted);">Pass: </span>
+          <span class="pw-reveal" id="pw{{ a.id }}" onclick="revPw('{{ a.id }}','{{ a.password | replace("'", "\\'") }}')">••••••••</span>
+        </div>
+      </td>
+      <td class="pe-4">
+        <div class="d-flex justify-content-end align-items-center gap-1 flex-wrap">
+          <!-- Edit -->
+          <a href="{{ url_for('admin_edit_agency', agency_id=a.id) }}"
+             class="btn btn-sm btn-outline-primary" style="font-size:0.74rem;padding:4px 10px;">
+            <i class="ph ph-pencil-simple"></i> Edit
+          </a>
+
+          <!-- Renew -->
+          <form action="{{ url_for('renew_agency', id=a.id) }}" method="POST" class="d-flex gap-1" style="margin:0;">
+            <input type="hidden" name="_search" value="{{ search }}">
+            <input type="hidden" name="_page"   value="{{ page }}">
+            <select name="renewal_months" class="form-select"
+                    style="width:72px;font-size:0.74rem;padding:4px 6px;height:auto;">
+              <option value="1">1 Mo</option>
+              <option value="3">3 Mo</option>
+              <option value="6">6 Mo</option>
+              <option value="12" selected>1 Yr</option>
+              <option value="24">2 Yr</option>
+            </select>
+            <button type="submit" class="btn btn-sm btn-success" style="font-size:0.74rem;padding:4px 10px;"
+                    onclick="return confirm('Renew subscription for {{ a.agency_name }}?')">
+              Renew
+            </button>
+          </form>
+
+          <!-- Delete -->
+          <form action="{{ url_for('delete_agency', id=a.id) }}" method="POST" style="margin:0;">
+            <button type="submit" class="btn btn-sm btn-outline-danger" style="font-size:0.74rem;padding:4px 9px;"
+                    onclick="return confirm('Delete {{ a.agency_name }}? This cannot be undone.')">
+              <i class="ph ph-trash"></i>
+            </button>
+          </form>
+        </div>
+      </td>
+    </tr>
+    {% else %}
+    <tr>
+      <td colspan="5" class="text-center py-5" style="color:var(--text-muted);">
+        <i class="ph ph-buildings" style="font-size:2.4rem;opacity:0.25;display:block;margin-bottom:10px;"></i>
+        {% if search %}No agencies match "{{ search }}"{% else %}No agencies registered yet.{% endif %}
+      </td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+
+  <!-- Table footer / pagination -->
+  {% if agencies %}
+  <div style="padding:12px 20px;border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;background:var(--bg-card);">
+    <span style="font-size:0.78rem;color:var(--text-muted);">
+      Showing {{ ((page-1)*10)+1 }}–{{ [page*10, total]|min }} of {{ total }}
+    </span>
+    {% if total_pages > 1 %}
+    <div class="pager">
+      {% if page > 1 %}
+        <a href="{{ url_for('admin_dashboard', page=page-1, search=search, status=status) }}" title="Previous">
+          <i class="ph ph-caret-left" style="font-size:13px;"></i>
+        </a>
+      {% else %}
+        <span class="disabled"><i class="ph ph-caret-left" style="font-size:13px;"></i></span>
+      {% endif %}
+
+      {% for p in range(1, total_pages+1) %}
+        {% if p == page %}
+          <span class="cur">{{ p }}</span>
+        {% elif p == 1 or p == total_pages or (p >= page-1 and p <= page+1) %}
+          <a href="{{ url_for('admin_dashboard', page=p, search=search, status=status) }}">{{ p }}</a>
+        {% elif p == 2 or p == total_pages-1 %}
+          <span class="disabled" style="width:auto;padding:0 3px;border:none;font-size:0.75rem;">…</span>
+        {% endif %}
+      {% endfor %}
+
+      {% if page < total_pages %}
+        <a href="{{ url_for('admin_dashboard', page=page+1, search=search, status=status) }}" title="Next">
+          <i class="ph ph-caret-right" style="font-size:13px;"></i>
+        </a>
+      {% else %}
+        <span class="disabled"><i class="ph ph-caret-right" style="font-size:13px;"></i></span>
+      {% endif %}
+    </div>
+    {% endif %}
+  </div>
+  {% endif %}
+</div>
+
+<!-- ── Payment / UPI Settings Panel ─────────────────────────────── -->
+<div class="table-wrap mt-4" style="border-radius:var(--radius-lg);overflow:visible;">
+  <div style="padding:16px 22px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;background:var(--bg-card);border-radius:var(--radius-lg) var(--radius-lg) 0 0;">
+    <div style="width:34px;height:34px;background:var(--accent-pale);border-radius:8px;display:flex;align-items:center;justify-content:center;color:var(--accent);">
+      <i class="ph ph-qr-code" style="font-size:16px;"></i>
+    </div>
+    <div>
+      <div style="font-weight:700;font-size:0.9rem;">Payment &amp; Contact Settings</div>
+      <div style="font-size:0.73rem;color:var(--text-muted);">
+        Set in <code style="background:var(--bg-subtle);padding:1px 5px;border-radius:4px;font-size:0.72rem;">.env</code>
+        — edit the file and restart the server to update
+      </div>
+    </div>
+  </div>
+
+  <div style="padding:20px 24px;background:var(--bg-card);display:flex;flex-wrap:wrap;gap:20px;align-items:flex-start;border-radius:0 0 var(--radius-lg) var(--radius-lg);">
+
+    <!-- UPI block -->
+    <div style="display:flex;flex-direction:column;gap:10px;min-width:220px;">
+      <div style="font-size:0.68rem;font-weight:700;text-transform:uppercase;letter-spacing:0.6px;color:var(--text-muted);">
+        <i class="ph ph-currency-inr" style="font-size:12px;"></i> UPI Payment
+      </div>
+      {% if payment_info.upi_id %}
+        <div style="display:flex;align-items:center;gap:8px;">
+          <i class="ph ph-device-mobile" style="color:var(--accent);font-size:18px;"></i>
+          <span style="font-weight:700;font-size:0.95rem;color:var(--text);">{{ payment_info.upi_id }}</span>
+          <span class="chip chip-green">Active</span>
+        </div>
+      {% else %}
+        <div style="font-size:0.82rem;color:var(--text-muted);">
+          <i class="ph ph-warning" style="font-size:14px;color:var(--warn);"></i>
+          ADMIN_UPI_ID not set in .env
+        </div>
+      {% endif %}
+      {% if payment_info.upi_qr_url %}
+        <div>
+          <div style="font-size:0.7rem;color:var(--text-muted);margin-bottom:5px;">QR Code</div>
+          <img src="{{ payment_info.upi_qr_url }}"
+               style="height:72px;width:72px;object-fit:contain;border:1px solid var(--border);border-radius:var(--radius);background:white;padding:4px;">
+        </div>
+      {% endif %}
+    </div>
+
+    <div style="width:1px;background:var(--border);align-self:stretch;"></div>
+
+    <!-- Contact block -->
+    <div style="display:flex;flex-direction:column;gap:10px;min-width:220px;">
+      <div style="font-size:0.68rem;font-weight:700;text-transform:uppercase;letter-spacing:0.6px;color:var(--text-muted);">
+        <i class="ph ph-address-book" style="font-size:12px;"></i> Admin Contact
+      </div>
+      {% if payment_info.admin_phone %}
+        <div style="display:flex;align-items:center;gap:7px;font-size:0.84rem;">
+          <i class="ph ph-phone" style="color:var(--accent);font-size:15px;flex-shrink:0;"></i>
+          <span style="font-weight:600;color:var(--text);">{{ payment_info.admin_phone }}</span>
+        </div>
+      {% endif %}
+      {% if payment_info.admin_whatsapp %}
+        <div style="display:flex;align-items:center;gap:7px;font-size:0.84rem;">
+          <i class="ph ph-chats" style="color:#2E7D32;font-size:15px;flex-shrink:0;"></i>
+          <span style="font-weight:600;color:var(--text);">{{ payment_info.admin_whatsapp }}</span>
+          <span class="chip chip-green">WhatsApp</span>
+        </div>
+      {% endif %}
+      {% if payment_info.admin_email %}
+        <div style="display:flex;align-items:center;gap:7px;font-size:0.84rem;">
+          <i class="ph ph-envelope" style="color:var(--accent);font-size:15px;flex-shrink:0;"></i>
+          <span style="font-weight:600;color:var(--text);">{{ payment_info.admin_email }}</span>
+        </div>
+      {% endif %}
+      {% if not payment_info.admin_phone and not payment_info.admin_whatsapp and not payment_info.admin_email %}
+        <div style="font-size:0.82rem;color:var(--text-muted);">
+          <i class="ph ph-warning" style="font-size:14px;color:var(--warn);"></i>
+          ADMIN_PHONE / ADMIN_WHATSAPP / ADMIN_EMAIL not set in .env
+        </div>
+      {% endif %}
+    </div>
+
+    <!-- .env hint -->
+    <div style="margin-left:auto;background:var(--bg-subtle);border:1px solid var(--border);border-radius:var(--radius);padding:14px 18px;font-size:0.75rem;color:var(--text-muted);line-height:1.8;align-self:center;">
+      <div style="font-weight:700;color:var(--text);margin-bottom:6px;">Edit in <code>.env</code></div>
+      <div>ADMIN_UPI_ID=<span style="color:var(--accent);">yourname@paytm</span></div>
+      <div>ADMIN_UPI_QR_URL=<span style="color:var(--accent);">https://...</span></div>
+      <div>ADMIN_PHONE=<span style="color:var(--accent);">9876543210</span></div>
+      <div>ADMIN_WHATSAPP=<span style="color:var(--accent);">9876543210</span></div>
+      <div>ADMIN_EMAIL=<span style="color:var(--accent);">admin@solardoc.in</span></div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+function revPw(id, pw){
+  const el = document.getElementById('pw' + id);
+  if(el.classList.contains('shown')){ el.textContent = '••••••••'; el.classList.remove('shown'); }
+  else { el.textContent = pw; el.classList.add('shown'); }
+}
+// Debounce live search
+let searchTimer;
+const si = document.querySelector('.searchbox input');
+if(si){
+  si.addEventListener('input', function(){
+    clearTimeout(searchTimer);
+    searchTimer = setTimeout(function(){ document.getElementById('searchForm').submit(); }, 350);
+  });
+}
+</script>
+{% endblock %}

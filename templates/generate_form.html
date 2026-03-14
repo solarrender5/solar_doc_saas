@@ -1,0 +1,536 @@
+{% extends 'base.html' %}
+{% block title %}Generate Documents{% endblock %}
+{% block content %}
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css">
+<style>
+  /* Layout */
+  .gen-wrap { display: flex; gap: 24px; align-items: flex-start; }
+  .gen-sidebar { width: 200px; flex-shrink: 0; position: sticky; top: calc(var(--nav-h) + 16px); }
+  .gen-main { flex: 1; min-width: 0; }
+
+  /* Sidebar nav */
+  .snav { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 12px 8px; }
+  .snav-label { font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; color: var(--text-muted); padding: 0 8px; margin-bottom: 6px; }
+  .snavlink {
+    display: flex; align-items: center; gap: 8px;
+    padding: 7px 10px; border-radius: var(--radius);
+    font-size: 0.8rem; font-weight: 500;
+    color: var(--text-muted);
+    text-decoration: none;
+    transition: all 0.13s;
+    margin-bottom: 1px;
+  }
+  .snavlink i { font-size: 14px; flex-shrink: 0; }
+  .snavlink:hover  { background: var(--accent-pale); color: var(--accent); }
+  .snavlink.active { background: var(--accent-pale); color: var(--accent); font-weight: 600; }
+  .snavlink .sn { width: 18px; height: 18px; border-radius: 50%; background: var(--bg-subtle); color: var(--text-muted); display: flex; align-items: center; justify-content: center; font-size: 0.65rem; font-weight: 700; flex-shrink: 0; transition: all 0.13s; }
+  .snavlink.active .sn { background: var(--accent); color: var(--accent-text); }
+
+  /* Form sections */
+  .fsec { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 24px 28px; margin-bottom: 16px; scroll-margin-top: calc(var(--nav-h) + 16px); }
+  .fsec-head { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; padding-bottom: 14px; border-bottom: 1px solid var(--border); }
+  .fsec-ico { width: 36px; height: 36px; border-radius: 9px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 16px; }
+  .fsec-title { font-weight: 700; font-size: 0.92rem; color: var(--text); margin: 0; }
+  .fsec-sub   { font-size: 0.76rem; color: var(--text-muted); margin: 1px 0 0; }
+  .sub-label { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted); margin: 16px 0 10px; }
+
+  /* Uploads */
+  .upload-zone {
+    border: 2px dashed var(--border);
+    border-radius: var(--radius);
+    padding: 18px;
+    background: var(--bg-subtle);
+    transition: border-color 0.15s;
+  }
+  .upload-zone:hover { border-color: var(--accent); }
+  .preview-img { width: 100%; max-height: 100px; object-fit: contain; border-radius: var(--radius); border: 1px solid var(--border); background: var(--bg-card); padding: 4px; display: none; margin-top: 10px; }
+
+  /* ── Bold when filled, muted when empty ─────────────────────────── */
+  .form-control,
+  .form-select {
+    font-weight: 400;
+    color: var(--text-muted);
+    transition: font-weight 0s, color 0.12s, border-color 0.13s, box-shadow 0.13s;
+  }
+  /* input[type=text/number/email/tel/date] filled */
+  .form-control:not(:placeholder-shown),
+  textarea.form-control:not(:placeholder-shown) {
+    font-weight: 600;
+    color: var(--text);
+  }
+  /* select always shows a real value — bold when not the placeholder */
+  .form-select:not([data-empty="true"]) {
+    font-weight: 600;
+    color: var(--text);
+  }
+  /* date inputs — browsers don't support :placeholder-shown for date;
+     use JS class instead */
+  input[type="date"].has-value {
+    font-weight: 600;
+    color: var(--text);
+  }
+  input[type="date"]:not(.has-value) {
+    color: var(--text-muted);
+  }
+  /* textarea placeholder fix (already covered but explicit) */
+  textarea.form-control::placeholder { font-weight: 400; color: var(--text-light); }
+
+  /* ── Aspect ratio hint pill on upload zones ─────────────────────── */
+  .ratio-pill {
+    display: inline-flex; align-items: center; gap: 4px;
+    background: var(--accent-pale); color: var(--accent);
+    font-size: 0.7rem; font-weight: 700;
+    padding: 2px 8px; border-radius: 10px;
+    letter-spacing: 0.3px;
+  }
+
+  /* Log terminal */
+  #logBody {
+    background: #0d1117; color: #e6edf3;
+    font-family: 'SF Mono', 'Fira Code', 'Courier New', monospace;
+    font-size: 0.8rem; padding: 16px;
+    border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+    min-height: 160px; max-height: 50vh;
+    overflow-y: auto; white-space: pre-wrap; word-break: break-word;
+  }
+  .ll { display: block; padding: 1px 0; }
+  .ll.ok  { color: #3fb950; }
+  .ll.err { color: #f85149; }
+  .ll.wrn { color: #d29922; }
+  .ll.inf { color: #79c0ff; }
+
+  /* Spinner */
+  .dot-loader span { display: inline-block; width: 7px; height: 7px; margin: 0 2px; background: var(--accent); border-radius: 50%; animation: bdot 1.2s infinite ease-in-out; }
+  .dot-loader span:nth-child(2) { animation-delay: 0.2s; }
+  .dot-loader span:nth-child(3) { animation-delay: 0.4s; }
+  @keyframes bdot { 0%,80%,100%{transform:scale(0.6);opacity:0.4} 40%{transform:scale(1);opacity:1} }
+
+  /* Cropper */
+  .img-container { width: 100%; height: 460px; background: #111; display: flex; align-items: center; justify-content: center; }
+  #cropImg { display: block; max-width: 100%; max-height: 100%; }
+
+  /* Submit bar */
+  .submit-bar { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 20px 24px; display: flex; align-items: flex-end; gap: 16px; flex-wrap: wrap; }
+
+  /* Doc chips */
+  .doc-chips { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 8px; margin-bottom: 20px; }
+  .doc-chip { display: flex; align-items: center; gap: 7px; padding: 8px 11px; background: var(--bg-subtle); border: 1px solid var(--border); border-radius: var(--radius); font-size: 0.78rem; font-weight: 500; color: var(--text); }
+  .doc-chip i { color: var(--accent); font-size: 14px; flex-shrink: 0; }
+
+  @media (max-width: 768px) {
+    .gen-wrap { flex-direction: column; }
+    .gen-sidebar { width: 100%; position: static; }
+    .snav-label { display: none; }
+    .snav { padding: 8px; display: flex; gap: 4px; flex-wrap: wrap; }
+    .snavlink { flex: 1; min-width: 100px; justify-content: center; }
+    .snavlink i { display: none; }
+  }
+</style>
+
+<!-- Page header -->
+<div class="d-flex align-items-center justify-content-between mb-4">
+  <div>
+    <h4 class="fw-bold mb-0">Generate Document Set</h4>
+    <p style="color:var(--text-muted);font-size:0.78rem;margin:3px 0 0;">Fill all sections and click Generate ZIP to produce your documents</p>
+  </div>
+  <a href="{{ url_for('agency_dashboard') }}" class="btn btn-outline-secondary btn-sm px-3">
+    <i class="ph ph-arrow-left me-1"></i> Back
+  </a>
+</div>
+
+<div class="gen-wrap">
+
+  <!-- Sidebar -->
+  <div class="gen-sidebar">
+    <div class="snav">
+      <div class="snav-label">Sections</div>
+      <a href="#s1" class="snavlink active" data-s="s1"><span class="sn">1</span><i class="ph ph-user"></i>Consumer</a>
+      <a href="#s2" class="snavlink" data-s="s2"><span class="sn">2</span><i class="ph ph-lightning"></i>Grid</a>
+      <a href="#s3" class="snavlink" data-s="s3"><span class="sn">3</span><i class="ph ph-sun"></i>Technical</a>
+      <a href="#s4" class="snavlink" data-s="s4"><span class="sn">4</span><i class="ph ph-calendar"></i>Dates</a>
+      <a href="#s5" class="snavlink" data-s="s5"><span class="sn">5</span><i class="ph ph-upload"></i>Uploads</a>
+      <a href="#s6" class="snavlink" data-s="s6"><span class="sn">6</span><i class="ph ph-file-zip"></i>Generate</a>
+    </div>
+  </div>
+
+  <!-- Form -->
+  <div class="gen-main">
+  <form id="genForm" novalidate>
+
+    <!-- S1: Consumer -->
+    <div class="fsec" id="s1">
+      <div class="fsec-head">
+        <div class="fsec-ico" style="background:var(--accent-pale);color:var(--accent);"><i class="ph ph-user"></i></div>
+        <div><p class="fsec-title">Consumer Information</p><p class="fsec-sub">Details of the solar system owner</p></div>
+      </div>
+      <div class="row g-3">
+        <div class="col-md-6"><label class="form-label">Consumer Name <span class="required">*</span></label>
+          <input type="text" name="consumer_name" class="form-control" placeholder="e.g. Ramesh Patil" required></div>
+        <div class="col-md-6"><label class="form-label">Consumer Number <span class="required">*</span></label>
+          <input type="text" name="consumer_number" class="form-control" placeholder="e.g. 401234567890" required></div>
+        <div class="col-12"><label class="form-label">Installation Address <span class="required">*</span></label>
+          <textarea name="consumer_address" class="form-control" rows="2" placeholder="Full address of the solar installation site" required></textarea></div>
+        <div class="col-md-4"><label class="form-label">City / District <span class="required">*</span></label>
+          <input type="text" name="city" class="form-control" placeholder="e.g. Nagpur" required></div>
+        <div class="col-md-4"><label class="form-label">Contact Number <span class="required">*</span></label>
+          <input type="tel" name="consumer_contact_number" class="form-control" placeholder="10-digit mobile" required></div>
+        <div class="col-md-4"><label class="form-label">Email ID</label>
+          <input type="email" name="consumer_email" class="form-control" placeholder="consumer@email.com"></div>
+        <div class="col-md-6"><label class="form-label">Aadhar Number <span class="required">*</span></label>
+          <input type="text" name="consumer_aadhar_num" class="form-control" placeholder="XXXX XXXX XXXX" maxlength="14" required></div>
+      </div>
+    </div>
+
+    <!-- S2: Grid -->
+    <div class="fsec" id="s2">
+      <div class="fsec-head">
+        <div class="fsec-ico" style="background:#FFF3E0;color:#B05000;"><i class="ph ph-lightning"></i></div>
+        <div><p class="fsec-title">Grid &amp; Sanction Details</p><p class="fsec-sub">DISCOM and government sanction information</p></div>
+      </div>
+      <div class="row g-3">
+        <div class="col-md-6"><label class="form-label">DISCOM Division <span class="required">*</span></label>
+          <input type="text" name="discom_division" class="form-control" placeholder="e.g. MSEDCL Nagpur Urban" required></div>
+        <div class="col-md-6"><label class="form-label">Licensee Name <span class="required">*</span></label>
+          <input type="text" name="licensee_name" class="form-control" placeholder="e.g. Maharashtra State Electricity Distribution Co." required></div>
+        <div class="col-md-4"><label class="form-label">Sanction Number <span class="required">*</span></label>
+          <input type="text" name="sanction_number" class="form-control" placeholder="Sanction ref. number" required></div>
+        <div class="col-md-4"><label class="form-label">Sanctioned Capacity (KW) <span class="required">*</span></label>
+          <input type="number" step="0.01" min="0" name="sanction_capacity_kw" class="form-control" placeholder="e.g. 5.00" required></div>
+        <div class="col-md-4"><label class="form-label">Installed Capacity (KW) <span class="required">*</span></label>
+          <input type="number" step="0.01" min="0" name="system_capacity_kw" class="form-control" placeholder="e.g. 5.00" required></div>
+        <div class="col-md-4"><label class="form-label">Agreement Solar Price (Rs./KWh) <span class="required">*</span></label>
+          <input type="text" name="agreement_solar_price" class="form-control" placeholder="e.g. 3.50" required></div>
+      </div>
+    </div>
+
+    <!-- S3: Technical -->
+    <div class="fsec" id="s3">
+      <div class="fsec-head">
+        <div class="fsec-ico" style="background:#E8F5EC;color:#2D7A4A;"><i class="ph ph-sun"></i></div>
+        <div><p class="fsec-title">Technical Specifications</p><p class="fsec-sub">Solar modules and inverter details</p></div>
+      </div>
+      <div class="sub-label">Solar Modules</div>
+      <div class="row g-3 mb-2">
+        <div class="col-md-4"><label class="form-label">Make / Brand</label>
+          <input type="text" name="module_make" class="form-control" placeholder="e.g. Waaree, Adani"></div>
+        <div class="col-md-4"><label class="form-label">ALMM Model Number</label>
+          <input type="text" name="almm_model_number" class="form-control" placeholder="ALMM/LM/01/..."></div>
+        <div class="col-md-4"><label class="form-label">Module Efficiency (%)</label>
+          <input type="text" name="module_efficiency" class="form-control" placeholder="e.g. 20.5"></div>
+        <div class="col-md-4"><label class="form-label">Wattage per Module (Wp)</label>
+          <input type="number" name="module_capacity_wp" class="form-control" placeholder="e.g. 540" id="wp_inp"></div>
+        <div class="col-md-4"><label class="form-label">Total No. of Modules</label>
+          <input type="number" name="num_pv_modules" class="form-control" placeholder="e.g. 10" id="nm_inp"></div>
+        <div class="col-md-4">
+          <label class="form-label">Total Module Capacity (KWp)
+            <span style="font-weight:400;text-transform:none;letter-spacing:0;">(auto-calc)</span>
+          </label>
+          <input type="number" step="0.01" name="total_module_capacity_kwp" class="form-control" placeholder="Auto-calculated" id="kwp_inp">
+        </div>
+      </div>
+      <div class="sub-label">Inverter (PCU)</div>
+      <div class="row g-3">
+        <div class="col-md-6"><label class="form-label">Inverter Make &amp; Model</label>
+          <input type="text" name="inverter_make_and_model" class="form-control" placeholder="e.g. Sungrow SG5KTL-MT"></div>
+        <div class="col-md-3"><label class="form-label">Capacity (KW)</label>
+          <input type="number" step="0.01" name="inverter_capacity_kw" class="form-control" placeholder="e.g. 5.00"></div>
+        <div class="col-md-3"><label class="form-label">Rating</label>
+          <input type="text" name="inverter_rating_text" class="form-control" placeholder="e.g. 5 KVA"></div>
+      </div>
+    </div>
+
+    <!-- S4: Dates -->
+    <div class="fsec" id="s4">
+      <div class="fsec-head">
+        <div class="fsec-ico" style="background:#F3E8FF;color:#7040B0;"><i class="ph ph-calendar-blank"></i></div>
+        <div><p class="fsec-title">Important Dates</p><p class="fsec-sub">Leave blank if not yet applicable</p></div>
+      </div>
+      <div class="row g-3">
+        <div class="col-md-4"><label class="form-label">Agreement Date</label>
+          <input type="date" name="agreement_date" class="form-control"></div>
+        <div class="col-md-4"><label class="form-label">Annexure Agreement Date</label>
+          <input type="date" name="annexure_agreement_date" class="form-control"></div>
+        <div class="col-md-4"><label class="form-label">Installation Date</label>
+          <input type="date" name="installation_date" class="form-control"></div>
+        <div class="col-md-6"><label class="form-label">Meter Testing Date</label>
+          <input type="date" name="meter_testing_date" class="form-control"></div>
+        <div class="col-md-6"><label class="form-label">Commissioning / Performance Check Date</label>
+          <input type="date" name="performance_check_date" class="form-control"></div>
+      </div>
+    </div>
+
+    <!-- S5: Uploads -->
+    <div class="fsec" id="s5">
+      <div class="fsec-head">
+        <div class="fsec-ico" style="background:#E8F0FE;color:#2050B0;"><i class="ph ph-upload-simple"></i></div>
+        <div><p class="fsec-title">Consumer Documents</p><p class="fsec-sub">Upload signature and Aadhar card — crop after upload</p></div>
+      </div>
+      <input type="hidden" name="sig_b64"    id="sig_b64">
+      <input type="hidden" name="aadhar_b64" id="aadhar_b64">
+      <div class="row g-4">
+        <div class="col-md-6">
+          <div class="upload-zone">
+            <label class="form-label mb-1">Consumer Signature
+              <span class="ratio-pill ms-1"><i class="ph ph-crop" style="font-size:10px;"></i> 3 : 1</span>
+            </label>
+            <p style="font-size:0.76rem;color:var(--text-muted);margin:0 0 10px;">Upload and crop — auto-locked to 3:1 ratio (4.5 × 1.5 cm).</p>
+            <input type="file" class="form-control crop-input" data-target="sig" data-ratio="3" accept="image/png,image/jpeg">
+            <img id="sig-preview" class="preview-img" alt="">
+            <div id="sig-status" style="font-size:0.73rem;color:var(--text-muted);margin-top:6px;">Not uploaded</div>
+          </div>
+        </div>
+        <div class="col-md-6">
+          <div class="upload-zone">
+            <label class="form-label mb-1">Consumer Aadhar Card
+              <span class="ratio-pill ms-1"><i class="ph ph-crop" style="font-size:10px;"></i> 11 : 7</span>
+            </label>
+            <p style="font-size:0.76rem;color:var(--text-muted);margin:0 0 10px;">Upload — auto-locked to 11:7 ratio (11 × 7 cm).</p>
+            <input type="file" class="form-control crop-input" data-target="aadhar" data-ratio="1.5714" accept="image/png,image/jpeg">
+            <img id="aadhar-preview" class="preview-img" alt="">
+            <div id="aadhar-status" style="font-size:0.73rem;color:var(--text-muted);margin-top:6px;">Not uploaded</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- S6: Generate -->
+    <div class="fsec" id="s6">
+      <div class="fsec-head">
+        <div class="fsec-ico" style="background:var(--accent-pale);color:var(--accent);"><i class="ph ph-file-zip"></i></div>
+        <div><p class="fsec-title">Generate &amp; Download</p><p class="fsec-sub">Choose format and generate your document package</p></div>
+      </div>
+
+      <div class="doc-chips mb-4">
+        {% for ico, name in [('ph-file-text','Commissioning Report'),('ph-gauge','Meter Testing'),('ph-handshake','Model Agreement'),('ph-lightning','Net Metering'),('ph-check-square','Work Completion')] %}
+        <div class="doc-chip"><i class="ph {{ ico }}"></i><span>{{ name }}</span></div>
+        {% endfor %}
+      </div>
+
+      <div class="submit-bar">
+        <div style="flex:1;min-width:200px;">
+          <label class="form-label mb-1">Output Format</label>
+          <select name="format" class="form-select">
+            <option value="both" selected>DOCX + PDF (Recommended)</option>
+            <option value="pdf">PDF Only</option>
+            <option value="docx">DOCX Only</option>
+          </select>
+        </div>
+        <div>
+          <button type="submit" id="genBtn" class="btn btn-primary" style="font-size:0.9rem;padding:9px 28px;">
+            <i class="ph ph-file-arrow-up me-1"></i> Generate ZIP
+          </button>
+        </div>
+      </div>
+    </div>
+
+  </form>
+  </div>
+</div>
+
+
+<!-- ── Progress modal ── -->
+<div class="modal fade" id="logModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content border-0 overflow-hidden" style="background:var(--bg-card);">
+      <div style="background:#0d1117;padding:18px 22px;display:flex;align-items:center;gap:14px;">
+        <div id="mSpinner" class="dot-loader"><span></span><span></span><span></span></div>
+        <span id="mTitle" style="font-weight:700;font-size:1rem;color:#e6edf3;">Generating Documents ...</span>
+      </div>
+      <div id="logBody"></div>
+      <div style="padding:14px 20px;border-top:1px solid var(--border);display:flex;gap:10px;background:var(--bg-subtle);">
+        <a href="#" id="dlLink" class="btn btn-success px-5" style="display:none;">
+          <i class="ph ph-download-simple me-1"></i> Download ZIP
+        </a>
+        <button type="button" class="btn btn-outline-secondary" id="closeBtn" data-bs-dismiss="modal" style="display:none;">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Cropper modal ── -->
+<div class="modal fade" id="cropModal" data-bs-backdrop="static">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content border-0" style="background:var(--bg-card);">
+      <div class="modal-header border-0" style="background:var(--accent);">
+        <h5 class="modal-title text-white"><i class="ph ph-crop me-2"></i>Crop Image</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body p-0"><div class="img-container"><img id="cropImg" alt=""></div></div>
+      <div class="modal-footer border-0" style="background:var(--bg-subtle);">
+        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-primary px-5" id="cropBtn">
+          <i class="ph ph-check me-1"></i> Crop &amp; Save
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function(){
+
+  // ── Sidebar scroll-spy ──
+  const sections  = document.querySelectorAll('.fsec');
+  const navlinks  = document.querySelectorAll('.snavlink');
+  const io = new IntersectionObserver(entries => {
+    entries.forEach(e => {
+      if(e.isIntersecting){
+        const id = e.target.id;
+        navlinks.forEach(l => l.classList.toggle('active', l.dataset.s === id));
+      }
+    });
+  }, { rootMargin: '-60px 0px -55% 0px', threshold: 0.1 });
+  sections.forEach(s => io.observe(s));
+  navlinks.forEach(l => l.addEventListener('click', function(e){
+    e.preventDefault();
+    document.querySelector(l.getAttribute('href'))?.scrollIntoView({ behavior:'smooth', block:'start' });
+  }));
+
+  // ── Bold when filled, muted when empty (date inputs need JS) ──
+  function syncDateStyle(el){
+    if(el.value) el.classList.add('has-value');
+    else         el.classList.remove('has-value');
+  }
+  document.querySelectorAll('input[type="date"]').forEach(function(el){
+    syncDateStyle(el);
+    el.addEventListener('change', function(){ syncDateStyle(el); });
+  });
+
+  // ── Auto-calc KWp ──
+  const wpI = document.getElementById('wp_inp');
+  const nmI = document.getElementById('nm_inp');
+  const kI  = document.getElementById('kwp_inp');
+  function calc(){ const n=parseFloat(nmI.value)||0, w=parseFloat(wpI.value)||0; if(n&&w) kI.value=(n*w/1000).toFixed(2); }
+  wpI.addEventListener('input', calc);
+  nmI.addEventListener('input', calc);
+
+  // ── Cropper — aspect ratio locked per image type ──
+  // Ratios match docxtpl InlineImage dimensions:
+  //   sig    4.5×1.5 cm  → 3.000
+  //   aadhar 11×7 cm     → 1.571
+  //   stamp  6.5×2.5 cm  → 2.600   (used in admin_agency_form)
+  //   logo   4.5×4.5 cm  → 1.000   (used in admin_agency_form)
+  let cropper=null, cropTarget=null, cropRatio=NaN;
+  const cropImg = document.getElementById('cropImg');
+  const cropModalEl = document.getElementById('cropModal');
+  const cropModal = new bootstrap.Modal(cropModalEl);
+
+  document.querySelectorAll('.crop-input').forEach(function(el){
+    el.addEventListener('change', function(e){
+      const f = e.target.files?.[0];
+      if(!f) return;
+      if(f.size > 5*1024*1024){ alert('Max 5 MB.'); e.target.value=''; return; }
+      cropTarget = e.target.dataset.target;
+      cropRatio  = parseFloat(e.target.dataset.ratio) || NaN;
+      const r = new FileReader();
+      r.onload = ev => { cropImg.src = ev.target.result; cropModal.show(); };
+      r.readAsDataURL(f);
+    });
+  });
+  cropModalEl.addEventListener('shown.bs.modal', function(){
+    cropper = new Cropper(cropImg, {
+      aspectRatio: cropRatio,   // locked — e.g. 3 for signature, 1.5714 for aadhar
+      viewMode: 1,
+      guides: true,
+      highlight: false,
+      autoCropArea: 0.95,
+    });
+  });
+  cropModalEl.addEventListener('hidden.bs.modal', function(){ if(cropper){ cropper.destroy(); cropper=null; } });
+  document.getElementById('cropBtn').addEventListener('click', function(){
+    if(!cropper) return;
+    const b64 = cropper.getCroppedCanvas({ maxWidth: 1400 }).toDataURL('image/jpeg', 0.92);
+    document.getElementById(cropTarget+'_b64').value = b64;
+    const pr = document.getElementById(cropTarget+'-preview');
+    pr.src = b64; pr.style.display = 'block';
+    const st = document.getElementById(cropTarget+'-status');
+    st.innerHTML = '<i class="ph ph-check-circle" style="color:var(--accent);"></i> Image ready';
+    cropModal.hide();
+  });
+
+  // ── Generation + polling at 500ms ──
+  const form    = document.getElementById('genForm');
+  const genBtn  = document.getElementById('genBtn');
+  const logBody = document.getElementById('logBody');
+  const dlLink  = document.getElementById('dlLink');
+  const closeBtn= document.getElementById('closeBtn');
+  const mSpinner= document.getElementById('mSpinner');
+  const mTitle  = document.getElementById('mTitle');
+  const logModal= new bootstrap.Modal(document.getElementById('logModal'));
+  let pollInt=null, logIdx=0;
+
+  function aLog(msg, err){
+    const l = document.createElement('span');
+    let cls = 'inf';
+    if(err)                                                      cls = 'err';
+    else if(/DOCX done|ZIP ready|PDF:|done/i.test(msg))          cls = 'ok';
+    else if(/timeout|warn|missing/i.test(msg))                   cls = 'wrn';
+    l.className = 'll ' + cls;
+    l.textContent = '> ' + msg;
+    logBody.appendChild(l);
+    logBody.appendChild(document.createTextNode('\n'));
+    logBody.scrollTop = logBody.scrollHeight;
+  }
+  function stopPoll(){ if(pollInt){ clearInterval(pollInt); pollInt=null; } }
+  function startPoll(jid){
+    logIdx = 0;
+    pollInt = setInterval(async function(){
+      try {
+        const r = await fetch('/api/job/'+jid+'/status?since='+logIdx);
+        if(!r.ok) throw new Error('HTTP ' + r.status);
+        const d = await r.json();
+        d.logs.forEach(e => aLog(e.msg, e.error));
+        logIdx += d.logs.length;
+        if(d.status === 'done'){
+          stopPoll();
+          mSpinner.style.display = 'none';
+          mTitle.textContent = 'Complete — documents ready.';
+          mTitle.style.color = '#3fb950';
+          dlLink.href = d.download_url; dlLink.style.display = 'inline-flex';
+          closeBtn.style.display = 'inline-block';
+          genBtn.disabled = false; genBtn.innerHTML = '<i class="ph ph-file-arrow-up me-1"></i> Generate ZIP';
+          setTimeout(() => { window.location.href = d.download_url; }, 400);
+        }
+        if(d.status === 'error'){
+          stopPoll();
+          mSpinner.style.display = 'none';
+          mTitle.textContent = 'Generation failed.';
+          mTitle.style.color = '#f85149';
+          closeBtn.style.display = 'inline-block';
+          genBtn.disabled = false; genBtn.innerHTML = '<i class="ph ph-file-arrow-up me-1"></i> Generate ZIP';
+        }
+      } catch(e){ aLog('Polling error: ' + e.message, true); }
+    }, 500);   // 500ms — twice as fast as before
+  }
+
+  form.addEventListener('submit', async function(e){
+    e.preventDefault();
+    if(!form.checkValidity()){ form.reportValidity(); return; }
+    logBody.innerHTML = '';
+    dlLink.style.display = 'none'; closeBtn.style.display = 'none';
+    mSpinner.style.display = ''; mTitle.style.color = '#e6edf3';
+    mTitle.textContent = 'Generating Documents ...';
+    genBtn.disabled = true;
+    genBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Generating...';
+    logModal.show();
+    aLog('Submitting job ...');
+    const data = Object.fromEntries(new FormData(form).entries());
+    try {
+      const res  = await fetch('/api/generate', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(data) });
+      const json = await res.json();
+      if(json.job_id){ aLog('Job started: ' + json.job_id.slice(0,8) + ' ...'); startPoll(json.job_id); }
+      else throw new Error(json.error || 'No job_id');
+    } catch(err){
+      aLog(err.message, true);
+      genBtn.disabled = false;
+      genBtn.innerHTML = '<i class="ph ph-file-arrow-up me-1"></i> Generate ZIP';
+    }
+  });
+
+});
+</script>
+{% endblock %}
