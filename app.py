@@ -1,7 +1,7 @@
 import os, zipfile, io, base64, tempfile, subprocess, glob, uuid, requests, shutil, threading
 from math import ceil
 from datetime import datetime, timedelta
-from flask import Flask, render_template, request, session, redirect, url_for, flash, jsonify
+from flask import Flask, render_template, request, session, redirect, url_for, flash, jsonify, send_file
 from supabase import create_client
 from docxtpl import DocxTemplate, InlineImage
 from docx.shared import Cm
@@ -14,10 +14,8 @@ app = Flask(__name__)
 app.secret_key = os.getenv("FLASK_SECRET_KEY")
 supabase = create_client(os.getenv("SUPABASE_URL"), os.getenv("SUPABASE_KEY"))
 
-BASE_DIR        = os.path.abspath(os.path.dirname(__file__))
-INPUT_DOCS_DIR  = os.path.join(BASE_DIR, 'input_docs')
-DOWNLOAD_FOLDER = os.path.join(BASE_DIR, 'static', 'downloads')
-os.makedirs(DOWNLOAD_FOLDER, exist_ok=True)
+BASE_DIR       = os.path.abspath(os.path.dirname(__file__))
+INPUT_DOCS_DIR = os.path.join(BASE_DIR, 'input_docs')
 app.config['MAX_CONTENT_LENGTH']   = 50 * 1024 * 1024
 app.config['MAX_FORM_MEMORY_SIZE'] = 50 * 1024 * 1024
 
@@ -313,13 +311,13 @@ def run_job(jid, form_data, agency_id):
                 for t in running:
                     t.join()
 
-            # ── ZIP: STORED for PDFs (already compressed), DEFLATED for DOCX ──
+            # ── ZIP built entirely in memory — never touches disk ──────────────
             log("Building ZIP ...")
             cn    = form_data.get('consumer_name', 'Client').replace(' ', '_')
             cno   = form_data.get('consumer_number', '0000')
             zname = f"{cn}_{cno}_{datetime.now().strftime('%d-%m-%Y_%H%M%S')}.zip"
-            zpath = os.path.join(DOWNLOAD_FOLDER, zname)
-            with zipfile.ZipFile(zpath, 'w') as zf:
+            zbuf  = io.BytesIO()
+            with zipfile.ZipFile(zbuf, 'w') as zf:
                 for f in os.listdir(tmp):
                     full = os.path.join(tmp, f)
                     if fmt == 'docx' and f.endswith('.docx'):
@@ -329,10 +327,12 @@ def run_job(jid, form_data, agency_id):
                     elif fmt == 'both' and (f.endswith('.docx') or f.endswith('.pdf')):
                         ct = zipfile.ZIP_DEFLATED if f.endswith('.docx') else zipfile.ZIP_STORED
                         zf.write(full, f, compress_type=ct)
+            zbuf.seek(0)
 
             with jobs_lock:
-                jobs[jid]['status']       = 'done'
-                jobs[jid]['download_url'] = f'/static/downloads/{zname}'
+                jobs[jid]['status']    = 'done'
+                jobs[jid]['zip_name']  = zname           # filename for Content-Disposition
+                jobs[jid]['zip_bytes'] = zbuf.getvalue() # raw bytes — served once, then deleted
             log("ZIP ready — downloading.")
     except Exception as e:
         job_log(jid, f"Fatal: {e}", error=True)
@@ -369,8 +369,33 @@ def api_job_status(jid):
     with jobs_lock: job = jobs.get(jid)
     if not job:
         return jsonify({'error': 'not found'}), 404
+    # Expose a download URL only when ready — points to the one-time stream route
+    dl = f'/api/job/{jid}/download' if job.get('status') == 'done' else None
     return jsonify({'logs': job['logs'][since:], 'total': len(job['logs']),
-                    'status': job['status'], 'download_url': job.get('download_url')})
+                    'status': job['status'], 'download_url': dl})
+
+@app.route('/api/job/<jid>/download')
+@login_required
+def api_job_download(jid):
+    """
+    Stream the in-memory ZIP to the browser, then immediately purge it
+    from the job store.  The file never existed on disk and never will.
+    Agency can regenerate any time from generation history.
+    """
+    with jobs_lock:
+        job = jobs.get(jid)
+        if not job or job.get('status') != 'done' or not job.get('zip_bytes'):
+            return jsonify({'error': 'Not ready or already downloaded'}), 404
+        # Grab bytes and filename, then wipe from memory
+        raw   = job.pop('zip_bytes')
+        zname = job.pop('zip_name', 'documents.zip')
+        # Keep the job record itself (status/logs) but bytes are gone
+    return send_file(
+        io.BytesIO(raw),
+        mimetype='application/zip',
+        as_attachment=True,
+        download_name=zname,
+    )
 
 # ── Auth ──────────────────────────────────────────────────────────────────────
 @app.route('/login', methods=['GET', 'POST'])
@@ -417,6 +442,37 @@ def logout():
 @login_required
 def index():
     return redirect(url_for('admin_dashboard' if session['user']['role'] == 'admin' else 'agency_dashboard'))
+
+# ── Agency portal — branded login page at /<username> ────────────────────────
+# Each agency gets their own shareable URL: mydomain.com/sunpower_nagpur
+# Uses their existing username as the slug — no new DB column needed.
+# Reserved slugs (existing routes) are blocked below.
+_RESERVED_SLUGS = {
+    'login', 'logout', 'dashboard', 'admin', 'generate', 'history',
+    'static', 'api', 'favicon.ico',
+}
+
+@app.route('/<slug>')
+def agency_portal(slug):
+    slug = slug.strip().lower()
+    if slug in _RESERVED_SLUGS:
+        return redirect(url_for('login'))
+    try:
+        res = supabase.table('agencies').select(
+            'id,username,agency_name,logo_url,expires_at,role'
+        ).eq('username', slug).neq('role', 'admin').execute()
+    except Exception:
+        return redirect(url_for('login'))
+    if not res.data:
+        # Unknown slug — fall through to normal login
+        return redirect(url_for('login'))
+    agency = res.data[0]
+    # Expired agencies still get their portal but a warning is shown
+    dl = days_left(agency.get('expires_at') or '')
+    return render_template('portal.html',
+        agency=agency,
+        days_left=dl,
+        contact_info=ADMIN_INFO)
 
 # ── Agency dashboard ──────────────────────────────────────────────────────────
 @app.route('/dashboard')
@@ -572,7 +628,20 @@ def delete_agency(id):
 @app.route('/generate')
 @login_required
 def generate():
-    return render_template('generate_form.html')
+    prefill = {}
+    from_history = request.args.get('from_history', '').strip()
+    if from_history:
+        try:
+            aid = session['user']['id']
+            rec = (supabase.table('generation_history').select('*')
+                   .eq('id', from_history).eq('agency_id', aid).single().execute().data)
+            if rec:
+                # Strip keys not relevant to the form
+                skip = {'id', 'agency_id', 'created_at'}
+                prefill = {k: (v or '') for k, v in rec.items() if k not in skip}
+        except Exception:
+            pass
+    return render_template('generate_form.html', prefill=prefill)
 
 # ── History: list with search + pagination ────────────────────────────────────
 @app.route('/history')

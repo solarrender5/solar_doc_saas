@@ -1,0 +1,244 @@
+{% extends 'base.html' %}
+{% block title %}{{ agency.agency_name }} — SolarDoc Portal{% endblock %}
+{% block content %}
+<style>
+  .portal-wrap {
+    min-height: calc(100vh - var(--nav-h) - 60px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 40px 0;
+  }
+  .portal-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow);
+    width: 100%;
+    max-width: 440px;
+    overflow: hidden;
+  }
+
+  /* Agency identity banner */
+  .portal-banner {
+    background: var(--accent);
+    padding: 32px 36px 28px;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+  }
+  .portal-banner::before {
+    content: '';
+    position: absolute;
+    right: -40px; top: -40px;
+    width: 160px; height: 160px;
+    background: rgba(255,255,255,0.06);
+    border-radius: 50%;
+  }
+  .portal-banner::after {
+    content: '';
+    position: absolute;
+    left: -20px; bottom: -50px;
+    width: 120px; height: 120px;
+    background: rgba(255,255,255,0.04);
+    border-radius: 50%;
+  }
+  .portal-logo-wrap {
+    position: relative; z-index: 1;
+    width: 84px; height: 84px;
+    border-radius: 18px;
+    border: 2.5px solid rgba(255,255,255,0.35);
+    background: rgba(255,255,255,0.15);
+    display: flex; align-items: center; justify-content: center;
+    margin: 0 auto 16px;
+    overflow: hidden;
+  }
+  .portal-logo-wrap img {
+    width: 100%; height: 100%;
+    object-fit: contain;
+    padding: 6px;
+  }
+  .portal-logo-ph { color: rgba(255,255,255,0.8); font-size: 34px; }
+  .portal-agency-name {
+    position: relative; z-index: 1;
+    font-size: 1.25rem;
+    font-weight: 800;
+    color: #fff;
+    letter-spacing: -0.3px;
+    margin: 0;
+  }
+  .portal-tagline {
+    position: relative; z-index: 1;
+    font-size: 0.78rem;
+    color: rgba(255,255,255,0.72);
+    margin: 6px 0 0;
+  }
+  .portal-powered {
+    position: relative; z-index: 1;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    margin-top: 14px;
+    padding: 4px 10px;
+    background: rgba(255,255,255,0.12);
+    border: 1px solid rgba(255,255,255,0.2);
+    border-radius: 20px;
+    font-size: 0.68rem;
+    color: rgba(255,255,255,0.7);
+    font-weight: 600;
+    letter-spacing: 0.3px;
+  }
+
+  /* Form section */
+  .portal-form { padding: 28px 32px 32px; }
+  .pw-wrap { position: relative; }
+  .pw-eye { position: absolute; right: 11px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; color: var(--text-muted); padding: 0; }
+  .pw-eye:hover { color: var(--accent); }
+  .pw-eye i { font-size: 16px; }
+  .input-icon-wrap { position: relative; }
+  .input-icon-wrap i.field-ico { position: absolute; left: 11px; top: 50%; transform: translateY(-50%); color: var(--text-light); font-size: 15px; pointer-events: none; }
+  .input-icon-wrap input { padding-left: 33px; }
+
+  /* Expiry warning */
+  .portal-expiry {
+    margin: 0 32px 20px;
+    padding: 11px 16px;
+    border-radius: var(--radius);
+    font-size: 0.82rem;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .portal-expiry.warn   { background: var(--warn-pale);   border-left: 3px solid var(--warn);   color: var(--warn); }
+  .portal-expiry.danger { background: var(--danger-pale); border-left: 3px solid var(--danger); color: var(--danger); }
+
+  /* Admin contact at bottom */
+  .portal-contact {
+    padding: 16px 32px 24px;
+    border-top: 1px solid var(--border);
+  }
+</style>
+
+<div class="portal-wrap">
+  <div class="portal-card">
+
+    <!-- Agency identity banner -->
+    <div class="portal-banner">
+      <div class="portal-logo-wrap">
+        {% if agency.logo_url %}
+          <img src="{{ agency.logo_url }}" alt="{{ agency.agency_name }}">
+        {% else %}
+          <i class="ph-bold ph-buildings portal-logo-ph"></i>
+        {% endif %}
+      </div>
+      <h1 class="portal-agency-name">{{ agency.agency_name }}</h1>
+      <p class="portal-tagline">Solar Document Generation Portal</p>
+      <div class="portal-powered">
+        <i class="ph ph-sun" style="font-size:11px;"></i>
+        Powered by SolarDoc
+      </div>
+    </div>
+
+    <!-- Expiry warning if ≤ 30 days or expired -->
+    {% if days_left is not none %}
+      {% if days_left <= 0 %}
+        <div class="portal-expiry danger">
+          <i class="ph ph-x-circle" style="font-size:17px;flex-shrink:0;"></i>
+          Subscription expired. Contact administrator to renew access.
+        </div>
+      {% elif days_left <= 30 %}
+        <div class="portal-expiry {% if days_left <= 7 %}danger{% else %}warn{% endif %}">
+          <i class="ph ph-warning" style="font-size:17px;flex-shrink:0;"></i>
+          Subscription expires in <strong>{{ days_left }} day{{ 's' if days_left != 1 }}</strong>.
+          Contact administrator to renew.
+        </div>
+      {% endif %}
+    {% endif %}
+
+    <!-- Sign-in form -->
+    <div class="portal-form">
+      <div style="margin-bottom:22px;">
+        <div style="font-weight:700;font-size:0.95rem;color:var(--text);">Sign in to your portal</div>
+        <div style="font-size:0.77rem;color:var(--text-muted);margin-top:3px;">
+          Enter your password to continue.
+          Your account: <strong style="color:var(--accent);">{{ agency.username }}</strong>
+        </div>
+      </div>
+
+      <form method="POST" action="{{ url_for('login') }}" autocomplete="on">
+        <!-- Pre-fill and lock username to this agency -->
+        <input type="hidden" name="login_id" value="{{ agency.username }}">
+
+        <div class="mb-4">
+          <label class="form-label">Password</label>
+          <div class="pw-wrap input-icon-wrap">
+            <i class="ph ph-lock field-ico"></i>
+            <input type="password" name="password" id="pwInput" class="form-control"
+                   style="padding-right:38px;" placeholder="••••••••"
+                   autocomplete="current-password" required autofocus>
+            <button type="button" class="pw-eye" onclick="togglePw()" tabindex="-1">
+              <i class="ph ph-eye" id="pwIco"></i>
+            </button>
+          </div>
+        </div>
+
+        <button type="submit" class="btn btn-primary w-100 py-2" style="font-size:0.9rem;">
+          Sign In <i class="ph ph-arrow-right ms-1"></i>
+        </button>
+      </form>
+
+      <div style="text-align:center;margin-top:16px;">
+        <a href="{{ url_for('login') }}" style="font-size:0.77rem;color:var(--text-muted);">
+          <i class="ph ph-arrow-left" style="font-size:11px;"></i> Back to main login
+        </a>
+      </div>
+    </div>
+
+    <!-- Admin contact -->
+    {% set has_contact = contact_info and (contact_info.admin_phone or contact_info.admin_whatsapp or contact_info.admin_email) %}
+    {% if has_contact %}
+    <div class="portal-contact">
+      <div style="font-size:0.68rem;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-muted);margin-bottom:10px;">
+        <i class="ph ph-headset" style="font-size:12px;"></i> Contact Administrator
+      </div>
+      <div style="display:flex;flex-direction:column;gap:6px;">
+        {% if contact_info.admin_phone %}
+        <a href="tel:{{ contact_info.admin_phone }}"
+           style="display:flex;align-items:center;gap:8px;padding:7px 11px;background:var(--bg-subtle);border:1px solid var(--border);border-radius:var(--radius);text-decoration:none;color:var(--text);font-size:0.8rem;font-weight:500;">
+          <i class="ph ph-phone" style="color:var(--accent);font-size:14px;flex-shrink:0;"></i>
+          {{ contact_info.admin_phone }}
+        </a>
+        {% endif %}
+        {% if contact_info.admin_whatsapp %}
+        <a href="https://wa.me/91{{ contact_info.admin_whatsapp | replace(' ','') | replace('-','') }}"
+           target="_blank" rel="noopener"
+           style="display:flex;align-items:center;gap:8px;padding:7px 11px;background:#F1F8F1;border:1px solid #C8E6C9;border-radius:var(--radius);text-decoration:none;color:#2E7D32;font-size:0.8rem;font-weight:500;">
+          <i class="ph ph-chats" style="font-size:14px;flex-shrink:0;"></i>
+          WhatsApp — {{ contact_info.admin_whatsapp }}
+        </a>
+        {% endif %}
+        {% if contact_info.admin_email %}
+        <a href="mailto:{{ contact_info.admin_email }}"
+           style="display:flex;align-items:center;gap:8px;padding:7px 11px;background:var(--bg-subtle);border:1px solid var(--border);border-radius:var(--radius);text-decoration:none;color:var(--text);font-size:0.8rem;font-weight:500;">
+          <i class="ph ph-envelope" style="color:var(--accent);font-size:14px;flex-shrink:0;"></i>
+          {{ contact_info.admin_email }}
+        </a>
+        {% endif %}
+      </div>
+    </div>
+    {% endif %}
+
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function togglePw(){
+  const i=document.getElementById('pwInput'), ic=document.getElementById('pwIco');
+  if(i.type==='password'){i.type='text';ic.className='ph ph-eye-slash';}
+  else{i.type='password';ic.className='ph ph-eye';}
+}
+</script>
+{% endblock %}

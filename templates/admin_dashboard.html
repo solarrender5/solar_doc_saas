@@ -159,6 +159,15 @@
           <span style="color:var(--text-muted);">Pass: </span>
           <span class="pw-reveal" id="pw{{ a.id }}" onclick="revPw('{{ a.id }}','{{ a.password | replace("'", "\\'") }}')">••••••••</span>
         </div>
+        <!-- Portal URL -->
+        <div style="margin-top:6px;display:flex;align-items:center;gap:4px;background:var(--accent-pale);border:1px solid var(--border);border-radius:6px;padding:3px 7px;max-width:fit-content;">
+          <i class="ph ph-link" style="color:var(--accent);font-size:11px;flex-shrink:0;"></i>
+          <span style="font-size:0.68rem;font-weight:600;color:var(--accent);font-family:monospace;letter-spacing:0.2px;" id="slug{{ a.id }}">/{{ a.username }}</span>
+          <button onclick="copySlug('{{ a.username }}','{{ a.id }}')" title="Copy portal URL"
+                  style="background:none;border:none;padding:0;cursor:pointer;color:var(--accent);flex-shrink:0;line-height:1;margin-left:2px;">
+            <i class="ph ph-copy" id="slugico{{ a.id }}" style="font-size:11px;"></i>
+          </button>
+        </div>
       </td>
       <td class="pe-4">
         <div class="d-flex justify-content-end align-items-center gap-1 flex-wrap">
@@ -343,6 +352,13 @@ function revPw(id, pw){
   const el = document.getElementById('pw' + id);
   if(el.classList.contains('shown')){ el.textContent = '••••••••'; el.classList.remove('shown'); }
   else { el.textContent = pw; el.classList.add('shown'); }
+}
+function copySlug(username, id){
+  const url = window.location.origin + '/' + username;
+  navigator.clipboard.writeText(url).then(function(){
+    const ico = document.getElementById('slugico' + id);
+    if(ico){ ico.className = 'ph ph-check'; setTimeout(function(){ ico.className = 'ph ph-copy'; }, 2000); }
+  });
 }
 // Debounce live search
 let searchTimer;

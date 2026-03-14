@@ -1,5 +1,6 @@
 {% extends 'base.html' %}
 {% block title %}Generate Documents{% endblock %}
+{% set prefill = prefill if prefill is defined else {} %}
 {% block content %}
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css">
 <style>
@@ -138,6 +139,22 @@
   </a>
 </div>
 
+{% if prefill %}
+<div style="display:flex;align-items:center;gap:10px;padding:12px 18px;background:var(--accent-pale);border:1.5px solid var(--accent);border-radius:var(--radius-lg);margin-bottom:20px;">
+  <i class="ph ph-clock-clockwise" style="color:var(--accent);font-size:20px;flex-shrink:0;"></i>
+  <div style="flex:1;">
+    <div style="font-weight:700;font-size:0.86rem;color:var(--accent);">Fields pre-filled from history</div>
+    <div style="font-size:0.76rem;color:var(--text-muted);margin-top:1px;">
+      All text fields restored from the previous record.
+      <strong>Upload fresh signature and Aadhar images</strong> — they are never saved.
+    </div>
+  </div>
+  <a href="{{ url_for('generate') }}" class="btn btn-sm btn-outline-secondary" style="flex-shrink:0;font-size:0.76rem;">
+    <i class="ph ph-x me-1"></i> Clear
+  </a>
+</div>
+{% endif %}
+
 <div class="gen-wrap">
 
   <!-- Sidebar -->
@@ -165,19 +182,25 @@
       </div>
       <div class="row g-3">
         <div class="col-md-6"><label class="form-label">Consumer Name <span class="required">*</span></label>
-          <input type="text" name="consumer_name" class="form-control" placeholder="e.g. Ramesh Patil" required></div>
+          <input type="text" name="consumer_name" class="form-control" placeholder="e.g. Ramesh Patil" required
+                 value="{{ prefill.consumer_name if prefill else '' }}"></div>
         <div class="col-md-6"><label class="form-label">Consumer Number <span class="required">*</span></label>
-          <input type="text" name="consumer_number" class="form-control" placeholder="e.g. 401234567890" required></div>
+          <input type="text" name="consumer_number" class="form-control" placeholder="e.g. 401234567890" required
+                 value="{{ prefill.consumer_number if prefill else '' }}"></div>
         <div class="col-12"><label class="form-label">Installation Address <span class="required">*</span></label>
-          <textarea name="consumer_address" class="form-control" rows="2" placeholder="Full address of the solar installation site" required></textarea></div>
+          <textarea name="consumer_address" class="form-control" rows="2" placeholder="Full address of the solar installation site" required>{{ prefill.consumer_address if prefill else '' }}</textarea></div>
         <div class="col-md-4"><label class="form-label">City / District <span class="required">*</span></label>
-          <input type="text" name="city" class="form-control" placeholder="e.g. Nagpur" required></div>
+          <input type="text" name="city" class="form-control" placeholder="e.g. Nagpur" required
+                 value="{{ prefill.city if prefill else '' }}"></div>
         <div class="col-md-4"><label class="form-label">Contact Number <span class="required">*</span></label>
-          <input type="tel" name="consumer_contact_number" class="form-control" placeholder="10-digit mobile" required></div>
+          <input type="tel" name="consumer_contact_number" class="form-control" placeholder="10-digit mobile" required
+                 value="{{ prefill.consumer_contact_number if prefill else '' }}"></div>
         <div class="col-md-4"><label class="form-label">Email ID</label>
-          <input type="email" name="consumer_email" class="form-control" placeholder="consumer@email.com"></div>
+          <input type="email" name="consumer_email" class="form-control" placeholder="consumer@email.com"
+                 value="{{ prefill.consumer_email if prefill else '' }}"></div>
         <div class="col-md-6"><label class="form-label">Aadhar Number <span class="required">*</span></label>
-          <input type="text" name="consumer_aadhar_num" class="form-control" placeholder="XXXX XXXX XXXX" maxlength="14" required></div>
+          <input type="text" name="consumer_aadhar_num" class="form-control" placeholder="XXXX XXXX XXXX" maxlength="14" required
+                 value="{{ prefill.consumer_aadhar_num if prefill else '' }}"></div>
       </div>
     </div>
 
@@ -189,17 +212,23 @@
       </div>
       <div class="row g-3">
         <div class="col-md-6"><label class="form-label">DISCOM Division <span class="required">*</span></label>
-          <input type="text" name="discom_division" class="form-control" placeholder="e.g. MSEDCL Nagpur Urban" required></div>
+          <input type="text" name="discom_division" class="form-control" placeholder="e.g. MSEDCL Nagpur Urban" required
+                 value="{{ prefill.discom_division if prefill else '' }}"></div>
         <div class="col-md-6"><label class="form-label">Licensee Name <span class="required">*</span></label>
-          <input type="text" name="licensee_name" class="form-control" placeholder="e.g. Maharashtra State Electricity Distribution Co." required></div>
+          <input type="text" name="licensee_name" class="form-control" placeholder="e.g. Maharashtra State Electricity Distribution Co." required
+                 value="{{ prefill.licensee_name if prefill else '' }}"></div>
         <div class="col-md-4"><label class="form-label">Sanction Number <span class="required">*</span></label>
-          <input type="text" name="sanction_number" class="form-control" placeholder="Sanction ref. number" required></div>
+          <input type="text" name="sanction_number" class="form-control" placeholder="Sanction ref. number" required
+                 value="{{ prefill.sanction_number if prefill else '' }}"></div>
         <div class="col-md-4"><label class="form-label">Sanctioned Capacity (KW) <span class="required">*</span></label>
-          <input type="number" step="0.01" min="0" name="sanction_capacity_kw" class="form-control" placeholder="e.g. 5.00" required></div>
+          <input type="number" step="0.01" min="0" name="sanction_capacity_kw" class="form-control" placeholder="e.g. 5.00" required
+                 value="{{ prefill.sanction_capacity_kw if prefill else '' }}"></div>
         <div class="col-md-4"><label class="form-label">Installed Capacity (KW) <span class="required">*</span></label>
-          <input type="number" step="0.01" min="0" name="system_capacity_kw" class="form-control" placeholder="e.g. 5.00" required></div>
+          <input type="number" step="0.01" min="0" name="system_capacity_kw" class="form-control" placeholder="e.g. 5.00" required
+                 value="{{ prefill.system_capacity_kw if prefill else '' }}"></div>
         <div class="col-md-4"><label class="form-label">Agreement Solar Price (Rs./KWh) <span class="required">*</span></label>
-          <input type="text" name="agreement_solar_price" class="form-control" placeholder="e.g. 3.50" required></div>
+          <input type="text" name="agreement_solar_price" class="form-control" placeholder="e.g. 3.50" required
+                 value="{{ prefill.agreement_solar_price if prefill else '' }}"></div>
       </div>
     </div>
 
@@ -212,30 +241,39 @@
       <div class="sub-label">Solar Modules</div>
       <div class="row g-3 mb-2">
         <div class="col-md-4"><label class="form-label">Make / Brand</label>
-          <input type="text" name="module_make" class="form-control" placeholder="e.g. Waaree, Adani"></div>
+          <input type="text" name="module_make" class="form-control" placeholder="e.g. Waaree, Adani"
+                 value="{{ prefill.module_make if prefill else '' }}"></div>
         <div class="col-md-4"><label class="form-label">ALMM Model Number</label>
-          <input type="text" name="almm_model_number" class="form-control" placeholder="ALMM/LM/01/..."></div>
+          <input type="text" name="almm_model_number" class="form-control" placeholder="ALMM/LM/01/..."
+                 value="{{ prefill.almm_model_number if prefill else '' }}"></div>
         <div class="col-md-4"><label class="form-label">Module Efficiency (%)</label>
-          <input type="text" name="module_efficiency" class="form-control" placeholder="e.g. 20.5"></div>
+          <input type="text" name="module_efficiency" class="form-control" placeholder="e.g. 20.5"
+                 value="{{ prefill.module_efficiency if prefill else '' }}"></div>
         <div class="col-md-4"><label class="form-label">Wattage per Module (Wp)</label>
-          <input type="number" name="module_capacity_wp" class="form-control" placeholder="e.g. 540" id="wp_inp"></div>
+          <input type="number" name="module_capacity_wp" class="form-control" placeholder="e.g. 540" id="wp_inp"
+                 value="{{ prefill.module_capacity_wp if prefill else '' }}"></div>
         <div class="col-md-4"><label class="form-label">Total No. of Modules</label>
-          <input type="number" name="num_pv_modules" class="form-control" placeholder="e.g. 10" id="nm_inp"></div>
+          <input type="number" name="num_pv_modules" class="form-control" placeholder="e.g. 10" id="nm_inp"
+                 value="{{ prefill.num_pv_modules if prefill else '' }}"></div>
         <div class="col-md-4">
           <label class="form-label">Total Module Capacity (KWp)
             <span style="font-weight:400;text-transform:none;letter-spacing:0;">(auto-calc)</span>
           </label>
-          <input type="number" step="0.01" name="total_module_capacity_kwp" class="form-control" placeholder="Auto-calculated" id="kwp_inp">
+          <input type="number" step="0.01" name="total_module_capacity_kwp" class="form-control" placeholder="Auto-calculated" id="kwp_inp"
+                 value="{{ prefill.total_module_capacity_kwp if prefill else '' }}">
         </div>
       </div>
       <div class="sub-label">Inverter (PCU)</div>
       <div class="row g-3">
         <div class="col-md-6"><label class="form-label">Inverter Make &amp; Model</label>
-          <input type="text" name="inverter_make_and_model" class="form-control" placeholder="e.g. Sungrow SG5KTL-MT"></div>
+          <input type="text" name="inverter_make_and_model" class="form-control" placeholder="e.g. Sungrow SG5KTL-MT"
+                 value="{{ prefill.inverter_make_and_model if prefill else '' }}"></div>
         <div class="col-md-3"><label class="form-label">Capacity (KW)</label>
-          <input type="number" step="0.01" name="inverter_capacity_kw" class="form-control" placeholder="e.g. 5.00"></div>
+          <input type="number" step="0.01" name="inverter_capacity_kw" class="form-control" placeholder="e.g. 5.00"
+                 value="{{ prefill.inverter_capacity_kw if prefill else '' }}"></div>
         <div class="col-md-3"><label class="form-label">Rating</label>
-          <input type="text" name="inverter_rating_text" class="form-control" placeholder="e.g. 5 KVA"></div>
+          <input type="text" name="inverter_rating_text" class="form-control" placeholder="e.g. 5 KVA"
+                 value="{{ prefill.inverter_rating_text if prefill else '' }}"></div>
       </div>
     </div>
 
@@ -247,15 +285,20 @@
       </div>
       <div class="row g-3">
         <div class="col-md-4"><label class="form-label">Agreement Date</label>
-          <input type="date" name="agreement_date" class="form-control"></div>
+          <input type="date" name="agreement_date" class="form-control"
+                 value="{{ (prefill.agreement_date or '')[:10] if prefill else '' }}"></div>
         <div class="col-md-4"><label class="form-label">Annexure Agreement Date</label>
-          <input type="date" name="annexure_agreement_date" class="form-control"></div>
+          <input type="date" name="annexure_agreement_date" class="form-control"
+                 value="{{ (prefill.annexure_agreement_date or '')[:10] if prefill else '' }}"></div>
         <div class="col-md-4"><label class="form-label">Installation Date</label>
-          <input type="date" name="installation_date" class="form-control"></div>
+          <input type="date" name="installation_date" class="form-control"
+                 value="{{ (prefill.installation_date or '')[:10] if prefill else '' }}"></div>
         <div class="col-md-6"><label class="form-label">Meter Testing Date</label>
-          <input type="date" name="meter_testing_date" class="form-control"></div>
+          <input type="date" name="meter_testing_date" class="form-control"
+                 value="{{ (prefill.meter_testing_date or '')[:10] if prefill else '' }}"></div>
         <div class="col-md-6"><label class="form-label">Commissioning / Performance Check Date</label>
-          <input type="date" name="performance_check_date" class="form-control"></div>
+          <input type="date" name="performance_check_date" class="form-control"
+                 value="{{ (prefill.performance_check_date or '')[:10] if prefill else '' }}"></div>
       </div>
     </div>
 
@@ -263,7 +306,13 @@
     <div class="fsec" id="s5">
       <div class="fsec-head">
         <div class="fsec-ico" style="background:#E8F0FE;color:#2050B0;"><i class="ph ph-upload-simple"></i></div>
-        <div><p class="fsec-title">Consumer Documents</p><p class="fsec-sub">Upload signature and Aadhar card — crop after upload</p></div>
+        <div>
+          <p class="fsec-title">Consumer Documents</p>
+          <p class="fsec-sub">
+            Upload signature and Aadhar card — crop after upload
+            {% if prefill %}<span style="color:var(--danger);font-weight:700;"> — images not saved, upload fresh</span>{% endif %}
+          </p>
+        </div>
       </div>
       <input type="hidden" name="sig_b64"    id="sig_b64">
       <input type="hidden" name="aadhar_b64" id="aadhar_b64">
@@ -337,11 +386,20 @@
         <span id="mTitle" style="font-weight:700;font-size:1rem;color:#e6edf3;">Generating Documents ...</span>
       </div>
       <div id="logBody"></div>
-      <div style="padding:14px 20px;border-top:1px solid var(--border);display:flex;gap:10px;background:var(--bg-subtle);">
-        <a href="#" id="dlLink" class="btn btn-success px-5" style="display:none;">
-          <i class="ph ph-download-simple me-1"></i> Download ZIP
-        </a>
-        <button type="button" class="btn btn-outline-secondary" id="closeBtn" data-bs-dismiss="modal" style="display:none;">Close</button>
+      <div style="padding:14px 20px;border-top:1px solid var(--border);background:var(--bg-subtle);">
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+          <a href="#" id="dlLink" class="btn btn-success px-5" style="display:none;"
+             onclick="markDownloaded()">
+            <i class="ph ph-download-simple me-1"></i> Download ZIP
+          </a>
+          <button type="button" class="btn btn-outline-secondary" id="closeBtn"
+                  data-bs-dismiss="modal" style="display:none;">Close</button>
+        </div>
+        <div id="dlNote" style="display:none;margin-top:10px;font-size:0.75rem;color:var(--text-muted);line-height:1.5;">
+          <i class="ph ph-info" style="font-size:13px;color:var(--accent);"></i>
+          ZIP is served directly — not saved on the server.
+          To re-download, generate again from <strong>History</strong> (fields pre-filled, upload fresh images).
+        </div>
       </div>
     </div>
   </div>
@@ -457,6 +515,7 @@ document.addEventListener('DOMContentLoaded', function(){
   const genBtn  = document.getElementById('genBtn');
   const logBody = document.getElementById('logBody');
   const dlLink  = document.getElementById('dlLink');
+  const dlNote  = document.getElementById('dlNote');
   const closeBtn= document.getElementById('closeBtn');
   const mSpinner= document.getElementById('mSpinner');
   const mTitle  = document.getElementById('mTitle');
@@ -476,6 +535,18 @@ document.addEventListener('DOMContentLoaded', function(){
     logBody.scrollTop = logBody.scrollHeight;
   }
   function stopPoll(){ if(pollInt){ clearInterval(pollInt); pollInt=null; } }
+
+  // Called when the Download button is clicked — disable it and show note
+  function markDownloaded(){
+    setTimeout(function(){
+      dlLink.style.opacity = '0.45';
+      dlLink.style.pointerEvents = 'none';
+      dlLink.innerHTML = '<i class="ph ph-check me-1"></i> Downloaded';
+      dlNote.style.display = 'block';
+    }, 300);
+  }
+  window.markDownloaded = markDownloaded;
+
   function startPoll(jid){
     logIdx = 0;
     pollInt = setInterval(async function(){
@@ -490,10 +561,17 @@ document.addEventListener('DOMContentLoaded', function(){
           mSpinner.style.display = 'none';
           mTitle.textContent = 'Complete — documents ready.';
           mTitle.style.color = '#3fb950';
-          dlLink.href = d.download_url; dlLink.style.display = 'inline-flex';
+          // d.download_url is now /api/job/<jid>/download
+          dlLink.href = d.download_url;
+          dlLink.style.display = 'inline-flex';
           closeBtn.style.display = 'inline-block';
-          genBtn.disabled = false; genBtn.innerHTML = '<i class="ph ph-file-arrow-up me-1"></i> Generate ZIP';
-          setTimeout(() => { window.location.href = d.download_url; }, 400);
+          genBtn.disabled = false;
+          genBtn.innerHTML = '<i class="ph ph-file-arrow-up me-1"></i> Generate ZIP';
+          // Auto-trigger download after short delay, then mark button used
+          setTimeout(function(){
+            window.location.href = d.download_url;
+            markDownloaded();
+          }, 400);
         }
         if(d.status === 'error'){
           stopPoll();
@@ -501,10 +579,11 @@ document.addEventListener('DOMContentLoaded', function(){
           mTitle.textContent = 'Generation failed.';
           mTitle.style.color = '#f85149';
           closeBtn.style.display = 'inline-block';
-          genBtn.disabled = false; genBtn.innerHTML = '<i class="ph ph-file-arrow-up me-1"></i> Generate ZIP';
+          genBtn.disabled = false;
+          genBtn.innerHTML = '<i class="ph ph-file-arrow-up me-1"></i> Generate ZIP';
         }
       } catch(e){ aLog('Polling error: ' + e.message, true); }
-    }, 500);   // 500ms — twice as fast as before
+    }, 500);
   }
 
   form.addEventListener('submit', async function(e){

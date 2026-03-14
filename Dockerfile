@@ -6,7 +6,7 @@ ENV PYTHONUNBUFFERED=1
 ENV DEBIAN_FRONTEND=noninteractive
 
 # 1. Enable the 'contrib' repository so apt-get can find ttf-mscorefonts-installer
-# We conditionally check for both Debian 12 (debian.sources) and older Debian formats (sources.list)
+# Notice the spaces added after the 'if' and 'CMD' statements
 RUN if [ -f /etc/apt/sources.list.d/debian.sources ]; then \
         sed -i 's/Components: main/Components: main contrib/g' /etc/apt/sources.list.d/debian.sources; \
     fi && \
