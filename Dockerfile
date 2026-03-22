@@ -23,11 +23,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     fontconfig \
     && rm -rf /var/lib/apt/lists/*
 
-# Custom agency fonts (Times New Roman etc. from your fonts/ folder)
-RUN mkdir -p /usr/share/fonts/truetype/custom
-COPY ./fonts/ /usr/share/fonts/truetype/custom/
-RUN fc-cache -f -v
-
 WORKDIR /app
 COPY requirements.txt /app/
 RUN pip install --upgrade pip && pip install -r requirements.txt
